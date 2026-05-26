@@ -1,0 +1,65 @@
+@model IEnumerable<ProductHub_MVC.Models.Product>
+@{
+    ViewData["Title"] = "Specification Comparison Matrix";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <div>
+            <h2 class="fw-bold text-dark mb-0">Product Comparison Dashboard Matrix</h2>
+            <p class="text-muted mb-0">Side-by-side parameters review for @Model.Count() selected items</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-dark btn-sm fw-semibold px-3">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <div class="table-responsive shadow-sm rounded border bg-white">
+        <table class="table table-bordered align-middle mb-0 text-center">
+            <thead class="table-dark">
+                <tr>
+                    <th class="text-start bg-secondary text-white ps-4" style="width: 220px;">Specification Metrics</th>
+                    @foreach (var product in Model)
+                    {
+                        <th style="min-width: 220px;">
+                            <span class="badge bg-success mb-2 px-2 py-1">@product.Brand</span>
+                            <h5 class="fw-bold text-white mb-0 text-truncate px-2">@product.ProductName</h5>
+                        </th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-start fw-bold text-secondary bg-light ps-4">Market Valuation Price</td>
+                    @foreach (var product in Model)
+                    {
+                        <td class="text-success fw-bold fs-5">Rs. @product.Price.ToString("N2")</td>
+                    }
+                </tr>
+                <tr>
+                    <td class="text-start fw-bold text-secondary bg-light ps-4">Star Satisfaction Rating</td>
+                    @foreach (var product in Model)
+                    {
+                        <td class="fw-bold text-warning">★ @product.ProductRating.ToString("0.0") / 5.0</td>
+                    }
+                </tr>
+                <tr>
+                    <td class="text-start fw-bold text-secondary bg-light ps-4">Available Inventory Stock</td>
+                    @foreach (var product in Model)
+                    {
+                        <td class="text-muted fw-semibold">@product.Quantity</td>
+                    }
+                </tr>
+                <tr>
+                    <td class="text-start fw-bold text-secondary bg-light ps-4 align-top pt-3">Descriptive Context Features</td>
+                    @foreach (var product in Model)
+                    {
+                        <td class="text-muted px-3 text-start align-top pt-3" style="font-size: 0.88rem; max-width: 260px; line-height: 1.4;">
+                            @product.ProductDescription
+                        </td>
+                    }
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

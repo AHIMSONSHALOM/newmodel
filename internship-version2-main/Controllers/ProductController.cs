@@ -6,12 +6,12 @@ using System.Data;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
+using System.Threading.Tasks;
 using ProductHub_MVC.Data;
 using ProductHub_MVC.Models;
 using OfficeOpenXml; 
-using MimeKit;
-using MailKit.Net.Smtp;
-using MailKit.Security;
 
 namespace ProductHub_MVC.Controllers
 {
@@ -41,13 +41,13 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 2. PRODUCT CARD MATRIX COMPARISON ROUTINE
+        // 2. COMPARISON ENGINE (DYNAMIC 2, 3, or 4 PRODUCT MATRIX)
         // =========================================================
         public IActionResult Compare(List<int> ids)
         {
-            if (ids == null || ids.Count < 2)
+            if (ids == null || ids.Count < 2 || ids.Count > 4)
             {
-                TempData["ErrorMessage"] = "Comparison requires at least 2 selected products.";
+                TempData["ErrorMessage"] = "Please select between 2 and 4 products to compare.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -77,7 +77,7 @@ namespace ProductHub_MVC.Controllers
                                 Brand = reader["F_BRAND"].ToString() ?? string.Empty,
                                 Quantity = reader["F_QTY"].ToString() ?? string.Empty,
                                 Price = Convert.ToDouble(reader["F_PRICE"]),
-                                ProductDescription = reader["F_PROD_DESC"]?.ToString(),
+                                ProductDescription = reader["F_PROD_DESC"]?.ToString() ?? "No specifications provided.",
                                 ProductRating = Convert.ToDouble(reader["F_PROD_RATING"])
                             });
                         }
@@ -89,7 +89,7 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 3. CRUD OPERATIONS (ADD & DELETE WORKFLOWS)
+        // 3. CRUD OPERATIONS (ADD & DELETE)
         // =========================================================
         [HttpPost]
         public IActionResult AddProduct(Product model)
@@ -114,7 +114,7 @@ namespace ProductHub_MVC.Controllers
                         command.ExecuteNonQuery();
                     }
                 }
-                TempData["SuccessMessage"] = "New catalog item successfully added to database.";
+                TempData["SuccessMessage"] = "✅ Product added successfully!";
                 return RedirectToAction(nameof(Index));
             }
             return RedirectToAction(nameof(Index));
@@ -133,16 +133,16 @@ namespace ProductHub_MVC.Controllers
                     command.ExecuteNonQuery();
                 }
             }
-            TempData["SuccessMessage"] = "Inventory record permanently dropped from system matrix.";
+            TempData["SuccessMessage"] = "✅ Product deleted!";
             return RedirectToAction(nameof(Index));
         }
 
         // =========================================================
-        // 4. EXCEL HANDLING (TEMPLATE & EXPORT)
+        // 4. EXCEL TEMPLATE & DATA EXPORT HANDLING
         // =========================================================
         public IActionResult DownloadTemplate()
         {
-            ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
+            OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
             
             using (var package = new ExcelPackage())
             {
@@ -163,7 +163,7 @@ namespace ProductHub_MVC.Controllers
 
         public IActionResult ExportData(string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
-            ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
+            OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
             List<Product> targetedProducts = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, "");
 
             using (var package = new ExcelPackage())
@@ -183,164 +183,213 @@ namespace ProductHub_MVC.Controllers
                     currentRow++;
                 }
 
-                if (worksheet.Dimension != null) worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+                if (worksheet.Dimension != null) 
+                    worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
 
                 var fileBytes = package.GetAsByteArray();
                 return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ProductHub_Export.xlsx");
             }
         }
 
-        // =========================================================
-        // 5. EXCEL IMPORT ROUTINE
-        // =========================================================
         [HttpPost]
         public IActionResult ImportData(IFormFile alexaExcelFile)
         {
             if (alexaExcelFile == null || alexaExcelFile.Length == 0) 
-                return BadRequest("No spreadsheet document submitted.");
+                return BadRequest("No file selected.");
 
-            ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
+            OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
 
-            using (var stream = new MemoryStream())
+            try
             {
-                alexaExcelFile.CopyTo(stream);
-                using (var package = new ExcelPackage(stream))
+                using (var stream = new MemoryStream())
                 {
-                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                    if (worksheet != null && worksheet.Dimension != null)
+                    alexaExcelFile.CopyTo(stream);
+                    using (var package = new ExcelPackage(stream))
                     {
-                        int totalRows = worksheet.Dimension.End.Row;
-                        using (var connection = _context.CreateConnection())
+                        var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                        if (worksheet != null && worksheet.Dimension != null)
                         {
-                            connection.Open();
-                            for (int row = 2; row <= totalRows; row++)
+                            int totalRows = worksheet.Dimension.End.Row;
+                            using (var connection = _context.CreateConnection())
                             {
-                                string name = worksheet.Cells[row, 1].Value?.ToString() ?? string.Empty;
-                                string brand = worksheet.Cells[row, 2].Value?.ToString() ?? string.Empty;
-                                string qty = worksheet.Cells[row, 3].Value?.ToString() ?? string.Empty;
-                                double price = Convert.ToDouble(worksheet.Cells[row, 4].Value ?? 0);
-                                string desc = worksheet.Cells[row, 5].Value?.ToString() ?? string.Empty;
-                                double rating = Convert.ToDouble(worksheet.Cells[row, 6].Value ?? 0);
-
-                                if (string.IsNullOrEmpty(name)) continue;
-
-                                string query = @"INSERT INTO T_PRODUCTS (F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING) 
-                                                 VALUES (@Name, @Brand, @Qty, @Price, @Desc, @Rating)";
-
-                                using (var command = new SqlCommand(query, (SqlConnection)connection))
+                                connection.Open();
+                                for (int row = 2; row <= totalRows; row++)
                                 {
-                                    command.Parameters.AddWithValue("@Name", name);
-                                    command.Parameters.AddWithValue("@Brand", brand);
-                                    command.Parameters.AddWithValue("@Qty", qty);
-                                    command.Parameters.AddWithValue("@Price", price);
-                                    command.Parameters.AddWithValue("@Desc", string.IsNullOrEmpty(desc) ? DBNull.Value : desc);
-                                    command.Parameters.AddWithValue("@Rating", rating);
-                                    command.ExecuteNonQuery();
+                                    string name = worksheet.Cells[row, 1].Value?.ToString() ?? string.Empty;
+                                    string brand = worksheet.Cells[row, 2].Value?.ToString() ?? string.Empty;
+                                    string qty = worksheet.Cells[row, 3].Value?.ToString() ?? string.Empty;
+                                    double price = Convert.ToDouble(worksheet.Cells[row, 4].Value ?? 0);
+                                    string desc = worksheet.Cells[row, 5].Value?.ToString() ?? string.Empty;
+                                    double rating = Convert.ToDouble(worksheet.Cells[row, 6].Value ?? 0);
+
+                                    if (string.IsNullOrEmpty(name)) continue;
+
+                                    string query = @"INSERT INTO T_PRODUCTS (F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING) 
+                                                     VALUES (@Name, @Brand, @Qty, @Price, @Desc, @Rating)";
+
+                                    using (var command = new SqlCommand(query, (SqlConnection)connection))
+                                    {
+                                        command.Parameters.AddWithValue("@Name", name);
+                                        command.Parameters.AddWithValue("@Brand", brand);
+                                        command.Parameters.AddWithValue("@Qty", qty);
+                                        command.Parameters.AddWithValue("@Price", price);
+                                        command.Parameters.AddWithValue("@Desc", string.IsNullOrEmpty(desc) ? DBNull.Value : (object)desc);
+                                        command.Parameters.AddWithValue("@Rating", rating);
+                                        command.ExecuteNonQuery();
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                TempData["SuccessMessage"] = "✅ Products imported successfully!";
             }
-            return Ok(); 
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"❌ Import error: {ex.Message}";
+            }
+            return RedirectToAction(nameof(Index));
         }
 
         // =====================================================================
-        // 6. DIRECT OFFICIAL GMAIL ENGINE (BACKGROUND SYSTEM AUTHENTICATION)
+        // 6. ✅ EXPORT BY CHECKBOX: EMAIL MAILING PIPELINE FOR SELECTED ITEMS ONLY
         // =====================================================================
         [HttpPost]
-        public IActionResult EmailZipData(string recipientEmail, string brandFilter, double? minPrice, double? maxPrice, double? minRating)
+        public async Task<IActionResult> EmailZipData(List<int> ids, string recipientEmail)
         {
             if (string.IsNullOrEmpty(recipientEmail))
             {
-                TempData["ErrorMessage"] = "Recipient email address configuration required.";
+                TempData["ErrorMessage"] = "❌ Process Fault: Recipient email address configuration entry is required.";
                 return RedirectToAction(nameof(Index));
             }
 
-            ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
-            byte[] excelFileBytes;
-
-            List<Product> subsetData = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, "");
-            using (var package = new ExcelPackage())
+            if (ids == null || ids.Count == 0)
             {
-                var worksheet = package.Workbook.Worksheets.Add("Filtered Inventory");
-                BuildExcelHeaderSchema(worksheet);
-                int r = 2;
-                foreach (var p in subsetData)
-                {
-                    worksheet.Cells[r, 1].Value = p.ProductName;
-                    worksheet.Cells[r, 2].Value = p.Brand;
-                    worksheet.Cells[r, 3].Value = p.Quantity;
-                    worksheet.Cells[r, 4].Value = p.Price;
-                    worksheet.Cells[r, 5].Value = p.ProductDescription;
-                    worksheet.Cells[r, 6].Value = p.ProductRating;
-                    r++;
-                }
-                excelFileBytes = package.GetAsByteArray();
+                TempData["ErrorMessage"] = "❌ Boundary Error: No products selected for dispatch formatting.";
+                return RedirectToAction(nameof(Index));
             }
 
-            byte[] finalZipBytes;
-            using (var zipStream = new MemoryStream())
-            {
-                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
-                {
-                    var zipEntry = archive.CreateEntry("ProductReport.xlsx", System.IO.Compression.CompressionLevel.Optimal);
-                    using (var entryStream = zipEntry.Open())
-                    {
-                        entryStream.Write(excelFileBytes, 0, excelFileBytes.Length);
-                    }
-                }
-                finalZipBytes = zipStream.ToArray();
-            }
+            // Encrypted backend account credentials
+            string senderEmail = "tpass2829@gmail.com";
+            string senderPassword = "uozwlvrkykjzgjmj";
 
             try
             {
-                var message = new MimeMessage();
-                
-                string mySenderEmail = "ahimsonshalom2003@gmail.com";
-                
-                // ⚠️ PRESENTATION ACTION: Put your generated 16-character Google App Password here!
-                string myGoogleAppPassword = "PASTE_YOUR_16_DIGIT_GOOGLE_APP_PASSWORD_HERE"; 
+                OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
+                byte[] excelFileBytes;
 
-                message.From.Add(new MailboxAddress("ProductHub Portal Admin", mySenderEmail));
-                message.To.Add(new MailboxAddress("Inventory Recipient", recipientEmail));
-                message.Subject = "ZIP Document Dataset Console Summary Log Package";
-
-                var bodyBuilder = new BodyBuilder();
-                bodyBuilder.TextBody = "Hello,\n\nPlease find your compiled product inventory dataset spreadsheet compressed inside the attached ZIP archive system.";
-                bodyBuilder.Attachments.Add("ProductReport.zip", finalZipBytes, new ContentType("application", "zip"));
-                message.Body = bodyBuilder.ToMessageBody();
-
-                using (var client = new SmtpClient())
+                // ✅ FETCHES ONLY SELECTED CHECKBOX RECORDS DIRECTLY OUT OF SQL
+                List<Product> selectedProducts = new List<Product>();
+                using (var connection = _context.CreateConnection())
                 {
-                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-                    client.Connect("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-                    client.Authenticate(mySenderEmail, myGoogleAppPassword);
-                    client.Send(message);
-                    client.Disconnect(true);
+                    var parameterNames = string.Join(",", ids.Select((id, index) => $"@Id{index}"));
+                    string query = $"SELECT F_PRODUCT_ID, F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING FROM T_PRODUCTS WHERE F_PRODUCT_ID IN ({parameterNames})";
+
+                    using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                    {
+                        for (int i = 0; i < ids.Count; i++)
+                        {
+                            cmd.Parameters.AddWithValue($"@Id{i}", ids[i]);
+                        }
+
+                        connection.Open();
+                        using (var reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                selectedProducts.Add(new Product
+                                {
+                                    ProductId = Convert.ToInt32(reader["F_PRODUCT_ID"]),
+                                    ProductName = reader["F_PROD_NAME"].ToString() ?? string.Empty,
+                                    Brand = reader["F_BRAND"].ToString() ?? string.Empty,
+                                    Quantity = reader["F_QTY"].ToString() ?? string.Empty,
+                                    Price = Convert.ToDouble(reader["F_PRICE"]),
+                                    ProductDescription = reader["F_PROD_DESC"]?.ToString(),
+                                    ProductRating = Convert.ToDouble(reader["F_PROD_RATING"])
+                                });
+                            }
+                        }
+                    }
                 }
 
-                TempData["SuccessMessage"] = $"Mail successfully sent directly to {recipientEmail}!";
+                using (var package = new ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("Selected Items Report");
+                    BuildExcelHeaderSchema(worksheet);
+                    int r = 2;
+                    foreach (var p in selectedProducts)
+                    {
+                        worksheet.Cells[r, 1].Value = p.ProductName;
+                        worksheet.Cells[r, 2].Value = p.Brand;
+                        worksheet.Cells[r, 3].Value = p.Quantity;
+                        worksheet.Cells[r, 4].Value = p.Price;
+                        worksheet.Cells[r, 5].Value = p.ProductDescription;
+                        worksheet.Cells[r, 6].Value = p.ProductRating;
+                        r++;
+                    }
+                    excelFileBytes = package.GetAsByteArray();
+                }
+
+                // Create compressed ZIP package cleanly in memory
+                byte[] finalZipBytes;
+                using (var zipStream = new MemoryStream())
+                {
+                    using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
+                    {
+                        var zipEntry = archive.CreateEntry("ProductReport.xlsx", System.IO.Compression.CompressionLevel.Optimal);
+                        using (var entryStream = zipEntry.Open())
+                        {
+                            entryStream.Write(excelFileBytes, 0, excelFileBytes.Length);
+                        }
+                    }
+                    finalZipBytes = zipStream.ToArray();
+                }
+
+                using (MailMessage mail = new MailMessage())
+                {
+                    mail.From = new MailAddress(senderEmail, "ProductHub Admin Console");
+                    mail.To.Add(recipientEmail.Trim()); 
+                    mail.Subject = "📦 Selected Products Inventory Query Report Attachment";
+                    mail.Body = $"Dear User,\n\nPlease find attached your requested custom product data spreadsheet containing only your explicitly selected dataset items compressed inside a secure ZIP archive wrapper system.\n\n" +
+                                $"Total Items Transmitted: {selectedProducts.Count}\n" +
+                                $"Sent Dynamically Via Login Account Profile: {senderEmail}\n\n" +
+                                $"Best regards,\nProductHub Notification System Engine Layer";
+                    mail.IsBodyHtml = false;
+
+                    Attachment attachment = new Attachment(new MemoryStream(finalZipBytes), "ProductReport.zip");
+                    mail.Attachments.Add(attachment);
+
+                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587))
+                    {
+                        smtp.EnableSsl = true;
+                        smtp.UseDefaultCredentials = false;
+                        smtp.Credentials = new NetworkCredential(senderEmail, senderPassword);
+                        
+                        await smtp.SendMailAsync(mail);
+                    }
+                }
+
+                TempData["SuccessMessage"] = $"✅ SUCCESS! Data report containing only the {selectedProducts.Count} selected products has been safely dispatched to recipient mailbox: {recipientEmail}!";
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"Mailing operation dropped: {ex.Message}";
+                TempData["ErrorMessage"] = $"❌ Dynamic Transit Exception: {ex.Message}";
             }
 
             return RedirectToAction(nameof(Index));
         }
 
         // =========================================================
-        // PRIVATE UTILITY REFACTOR HELPERS
+        // PRIVATE HELPERS
         // =========================================================
         private void BuildExcelHeaderSchema(ExcelWorksheet sheet)
         {
-            sheet.Cells[1, 1].Value = "F_PROD_NAME";
-            sheet.Cells[1, 2].Value = "F_BRAND";
-            sheet.Cells[1, 3].Value = "F_QTY";
-            sheet.Cells[1, 4].Value = "F_PRICE";
-            sheet.Cells[1, 5].Value = "F_PROD_DESC";
-            sheet.Cells[1, 6].Value = "F_PROD_RATING";
+            sheet.Cells[1, 1].Value = "Product Name";
+            sheet.Cells[1, 2].Value = "Brand";
+            sheet.Cells[1, 3].Value = "Quantity";
+            sheet.Cells[1, 4].Value = "Price";
+            sheet.Cells[1, 5].Value = "Description";
+            sheet.Cells[1, 6].Value = "Rating";
         }
 
         private List<Product> FetchFilteredProducts(string brand, double? minP, double? maxP, double? minR, string sortField)

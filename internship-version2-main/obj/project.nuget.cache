@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Fbe2ETh4SgY=",
+  "dgSpecHash": "ijehl6XhE0I=",
   "success": true,
   "projectFilePath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
   "expectedPackageFiles": [
@@ -8,6 +8,7 @@
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\epplus\\8.5.4\\epplus.8.5.4.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\epplus.interfaces\\8.4.0\\epplus.interfaces.8.4.0.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\mailkit\\4.16.0\\mailkit.4.16.0.nupkg.sha512",
+    "C:\\Users\\Aspl-Training\\.nuget\\packages\\mailtrap\\1.1.0\\mailtrap.1.1.0.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\microsoft.bcl.cryptography\\9.0.13\\microsoft.bcl.cryptography.9.0.13.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\microsoft.data.sqlclient\\7.0.1\\microsoft.data.sqlclient.7.0.1.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\microsoft.data.sqlclient.extensions.abstractions\\1.0.0\\microsoft.data.sqlclient.extensions.abstractions.1.0.0.nupkg.sha512",

@@ -10,6 +10,7 @@
         "dependencies": {
           "EPPlus": "8.5.4",
           "MailKit": "4.16.0",
+          "Mailtrap": "1.1.0",
           "Microsoft.Data.SqlClient": "7.0.1",
           "SendGrid": "9.29.3"
         },
@@ -53,6 +54,14 @@
           "lib/net10.0/MailKit.dll": {
             "assemblyVersion": "4.16.0.0",
             "fileVersion": "4.16.0.0"
+          }
+        }
+      },
+      "Mailtrap/1.1.0": {
+        "runtime": {
+          "lib/netstandard2.1/Mailtrap.dll": {
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       },
@@ -360,6 +369,13 @@
       "sha512": "sha512-trJ82DOpAmo8i1jO1vNE+dGn4mPRyeYfy4swRcAGgMJhPoI1Kohf4OFJJf0+YIj4iUxgxPn8W+ht7e7KiYzSjg==",
       "path": "mailkit/4.16.0",
       "hashPath": "mailkit.4.16.0.nupkg.sha512"
+    },
+    "Mailtrap/1.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rXBYEj0ljgabkKqPKFX+v4ovmxYov6fUrsNM7OLgEw/Gwcbie20CeRjBJA0G8RrSTD0O8eJA7u8PjNQTNFAOGg==",
+      "path": "mailtrap/1.1.0",
+      "hashPath": "mailtrap.1.1.0.nupkg.sha512"
     },
     "Microsoft.Bcl.Cryptography/9.0.13": {
       "type": "package",
