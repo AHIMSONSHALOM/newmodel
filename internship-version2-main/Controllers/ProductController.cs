@@ -25,10 +25,16 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 1. DATA GRID: FETCH, FILTER & SORT ENGINE
+        // 1. DATA GRID: FETCH, FILTER & SORT ENGINE (LOCKED DOWN)
         // =========================================================
         public IActionResult Index(string sortBy, string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
+            // ✅ STEP 5 SECURE CHECK: Redirect to security gatekeeper if user session footprint doesn't exist
+            if (HttpContext.Session.GetString("UserSession") == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             List<Product> products = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, sortBy);
 
             ViewBag.CurrentSort = sortBy;
@@ -41,10 +47,16 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 2. COMPARISON ENGINE (DYNAMIC 2, 3, or 4 PRODUCT MATRIX)
+        // 2. COMPARISON ENGINE (DYNAMIC MATRIX VIEW - LOCKED DOWN)
         // =========================================================
         public IActionResult Compare(List<int> ids)
         {
+            // ✅ STEP 5 SECURE CHECK: Protect comparison profiles from direct URL manipulation entry
+            if (HttpContext.Session.GetString("UserSession") == null)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ids == null || ids.Count < 2 || ids.Count > 4)
             {
                 TempData["ErrorMessage"] = "Please select between 2 and 4 products to compare.";
@@ -89,11 +101,16 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 3. CRUD OPERATIONS (ADD & DELETE)
+        // 3. CRUD OPERATIONS (ADD & DELETE - AUTHENTICATED)
         // =========================================================
         [HttpPost]
         public IActionResult AddProduct(Product model)
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ModelState.IsValid)
             {
                 using (var connection = _context.CreateConnection())
@@ -123,6 +140,11 @@ namespace ProductHub_MVC.Controllers
         [HttpPost]
         public IActionResult DeleteProduct(int id)
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             using (var connection = _context.CreateConnection())
             {
                 string query = "DELETE FROM T_PRODUCTS WHERE F_PRODUCT_ID = @Id";
@@ -142,6 +164,11 @@ namespace ProductHub_MVC.Controllers
         // =========================================================
         public IActionResult DownloadTemplate()
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
             
             using (var package = new ExcelPackage())
@@ -163,6 +190,11 @@ namespace ProductHub_MVC.Controllers
 
         public IActionResult ExportData(string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
             List<Product> targetedProducts = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, "");
 
@@ -194,6 +226,10 @@ namespace ProductHub_MVC.Controllers
         [HttpPost]
         public IActionResult ImportData(IFormFile alexaExcelFile)
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
             if (alexaExcelFile == null || alexaExcelFile.Length == 0) 
                 return BadRequest("No file selected.");
 
@@ -252,11 +288,16 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =====================================================================
-        // 6. ✅ EXPORT BY CHECKBOX: EMAIL PIPELINE WITH DYNAMIC FILE TIMESTAMPING
+        // 6. ✅ EXPORT BY CHECKBOX: EMAIL PIPELINE WITH TIMESTAMPED UNIQUE NAMES
         // =====================================================================
         [HttpPost]
         public async Task<IActionResult> EmailZipData(List<int> ids, string recipientEmail)
         {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
             if (string.IsNullOrEmpty(recipientEmail))
             {
                 TempData["ErrorMessage"] = "❌ Process Fault: Recipient email address configuration entry is required.";
@@ -334,7 +375,7 @@ namespace ProductHub_MVC.Controllers
                     excelFileBytes = package.GetAsByteArray();
                 }
 
-                // ✅ AUTO GENERATES COMPLETELY UNIQUE EXTENSION LABELS FOR EVALUATION MULTI-TASKS
+                // ✅ GENERATES DYNAMIC FILE LABELS USING DATES & TIMES TO ELIMINATE CACHE CLASHES
                 string uniqueTimestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 string uniqueExcelName = $"InventoryReport_{uniqueTimestamp}.xlsx";
                 string uniqueZipName = $"ProductPackage_{uniqueTimestamp}.zip";
@@ -345,7 +386,6 @@ namespace ProductHub_MVC.Controllers
                 {
                     using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, true))
                     {
-                        // Maps unique naming structures to database attachments mapping parameters
                         var zipEntry = archive.CreateEntry(uniqueExcelName, System.IO.Compression.CompressionLevel.Optimal);
                         using (var entryStream = zipEntry.Open())
                         {
@@ -380,7 +420,7 @@ namespace ProductHub_MVC.Controllers
                     }
                 }
 
-                TempData["SuccessMessage"] = $"✅ SUCCESS! Unique report package containing {selectedProducts.Count} products has been safely dispatched to recipient mailbox: {recipientEmail}!";
+                TempData["SuccessMessage"] = $"Base Query Complete: Data report packet containing {selectedProducts.Count} selected items has been securely dispatched to mailbox: {recipientEmail}!";
             }
             catch (Exception ex)
             {

@@ -9,12 +9,12 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<SqlDbContext>();
 
 // =========================================================================
-// REGISTER SESSIONS AND COOKIE CONTEXT PROPERTIES FOR TOAST NOTIFICATIONS
+// REGISTER SESSIONS AND COOKIE CONTEXT PROPERTIES FOR AUTHENTICATION
 // =========================================================================
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(20);
+    options.IdleTimeout = TimeSpan.FromMinutes(20); // Cookie auto expires after 20 minutes of inactivity
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
@@ -38,9 +38,11 @@ app.UseSession();
 
 app.UseAuthorization();
 
-// Route directly to your custom Product Controller dashboard grid layout page on load
+// =========================================================================
+// ✅ DEFAULT ROUTE MODIFIED: Route directly to Account/Login gatekeeper on load
+// =========================================================================
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Product}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();
