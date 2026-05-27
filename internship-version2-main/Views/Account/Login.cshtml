@@ -1,6 +1,6 @@
 @model ProductHub_MVC.Models.User
 @{
-    Layout = null; // Keeps the navbar hidden until successfully authenticated
+    Layout = null; // Keeps the main layout layout structures hidden until authorized
 }
 
 <!DOCTYPE html>
@@ -16,7 +16,7 @@
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        /* Top Navigation Style Bar matching image_160bbd.png */
+        /* Top Navigation Style Bar matching your primary dashboard theme */
         .brand-header {
             background-color: #212529;
             color: #ffffff;
@@ -60,12 +60,12 @@
         .login-card-body {
             padding: 30px;
         }
-        /* Input controls styling matching image_160bbd.png */
+        /* Input controls styling matching your primary grids */
         .form-label {
             font-size: 0.85rem;
             font-weight: 600;
             color: #495057;
-            text-uppercase: uppercase;
+            text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .input-group-text {
@@ -97,10 +97,10 @@
 
     <!-- Professional App Top Header Banner Component -->
     <div class="brand-header">
-        <i class="fa-solid test fa-cubes"></i>PRODUCTHUB CONSOLE
+        <i class="fa-solid fa-cubes"></i>PRODUCTHUB CONSOLE
     </div>
 
-    <!-- Login Form Wrapper Layout Context Matrix -->
+    <!-- Login Form Wrapper Layout Matrix -->
     <div class="login-container">
         <div class="login-card">
             <div class="card-accent-line"></div>
@@ -133,13 +133,20 @@
                     </div>
 
                     <!-- Password Field Input Metric Component -->
-                    <div class="mb-4">
+                    <div class="mb-2">
                         <label class="form-label mb-1">Security Key Passphrase</label>
                         <div class="input-group">
                             <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
                             <input asp-for="Password" class="form-control" type="password" placeholder="Enter secure account key..." required />
                         </div>
                         <span asp-validation-for="Password" class="text-danger small" style="font-size: 0.78rem;"></span>
+                    </div>
+
+                    <!-- ✅ STEP 6 ATTACHMENT: DYNAMIC OTP PASSWORD RECOVERY HOOK LINK -->
+                    <div class="text-end mb-4">
+                        <a asp-action="ForgotPassword" asp-controller="Account" class="text-decoration-none small fw-semibold text-success">
+                            <i class="fa-solid fa-key me-1" style="font-size: 0.75rem;"></i> Forgot password? Recovery by OTP
+                        </a>
                     </div>
 
                     <!-- Action Authorization Dispatch Trigger Button -->

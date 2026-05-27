@@ -1,0 +1,27 @@
+@{ Layout = null; }
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Verify Identity OTP Key</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
+    <div class="card shadow border-0 p-4 rounded" style="width: 100%; max-width: 420px;">
+        <div class="text-center mb-3"><h4 class="fw-bold text-dark m-0">✉️ VERIFY TRANSIT KEY</h4></div>
+        @if (TempData["Success"] != null) { <div class="alert alert-success small py-2 text-success fw-bold border-0">@TempData["Success"]</div> }
+        @if (TempData["Error"] != null) { <div class="alert alert-danger small py-2 border-0">@TempData["Error"]</div> }
+        <form asp-action="ResetPasswordWithOtp" method="post">
+            <input type="hidden" name="mobileNumber" value="@ViewBag.MobileNum" />
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-secondary">Enter 6-Digit OTP Auth Code</label>
+                <input type="text" name="otpCode" class="form-control text-center fw-bold letter-spacing" maxlength="6" required />
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold small text-secondary">Establish New Password Security Key</label>
+                <input type="password" name="newPassword" class="form-control form-control-sm" placeholder="Type brand-new key code..." required />
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold py-2">Commit Credentials Overwrite</button>
+        </form>
+    </div>
+</body>
+</html>
