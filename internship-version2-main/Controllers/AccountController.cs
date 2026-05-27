@@ -34,7 +34,9 @@ namespace ProductHub_MVC.Controllers
             using (var connection = _context.CreateConnection())
             {
                 string query = @"SELECT F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, 
-                                F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL 
+                                F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING,
+                                F_CAN_USE_EDIT, F_CAN_USE_DELETE
                                 FROM T_USERS WHERE F_USERNAME = @User AND F_PASSWORD = @Pass";
                 
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
@@ -55,6 +57,14 @@ namespace ProductHub_MVC.Controllers
                             HttpContext.Session.SetInt32("CanExport", Convert.ToInt32(reader["F_CAN_EXPORT"]));
                             HttpContext.Session.SetInt32("CanCompare", Convert.ToInt32(reader["F_CAN_COMPARE"]));
                             HttpContext.Session.SetInt32("CanEmail", Convert.ToInt32(reader["F_CAN_EMAIL"]));
+                            
+                            // ✅ STORAGE OF EXTENDED METRICS WITHIN CRYPTO COOKIE STATES
+                            HttpContext.Session.SetInt32("CanSeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]));
+                            HttpContext.Session.SetInt32("CanSeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]));
+                            HttpContext.Session.SetInt32("CanSeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]));
+                            HttpContext.Session.SetInt32("CanSeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]));
+                            HttpContext.Session.SetInt32("CanUseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]));
+                            HttpContext.Session.SetInt32("CanUseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]));
 
                             return RedirectToAction("Index", "Product");
                         }
@@ -65,19 +75,13 @@ namespace ProductHub_MVC.Controllers
             return View(model);
         }
 
-        // =========================================================
-        // 🔒 DYNAMIC OTP FORGOT PASSWORD SECURITY RECOVERY ROUTINES
-        // =========================================================
         [HttpGet]
         public IActionResult ForgotPassword() => View();
 
         [HttpPost]
         public IActionResult SendOtpCode(string mobileNumber)
         {
-            if (string.IsNullOrEmpty(mobileNumber)) {
-                TempData["Error"] = "Please provide your registered mobile number.";
-                return RedirectToAction(nameof(ForgotPassword));
-            }
+            if (string.IsNullOrEmpty(mobileNumber)) return RedirectToAction(nameof(ForgotPassword));
 
             using (var conn = _context.CreateConnection()) {
                 string checkUser = "SELECT COUNT(1) FROM T_USERS WHERE F_MOBILE_NUMBER = @Num";
@@ -85,14 +89,13 @@ namespace ProductHub_MVC.Controllers
                     checkCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
                     conn.Open();
                     if ((int)checkCmd.ExecuteScalar() == 0) {
-                        TempData["Error"] = "❌ Mobile number not found in account databases.";
+                        TempData["Error"] = "❌ Mobile number location matching failure.";
                         return RedirectToAction(nameof(ForgotPassword));
                     }
                 }
 
-                // Generates a mock real-time secure 6-digit verification code string
                 string dynamicOtp = new Random().Next(100000, 999999).ToString();
-                DateTime expiry = DateTime.Now.AddMinutes(5); // Code remains essential for 5 active minutes
+                DateTime expiry = DateTime.Now.AddMinutes(5);
 
                 string logOtp = "INSERT INTO T_OTP_LOG (F_MOBILE_NUMBER, F_OTP_CODE, F_EXPIRY_TIME) VALUES (@Num, @Otp, @Exp)";
                 using (var insertCmd = new SqlCommand(logOtp, (SqlConnection)conn)) {
@@ -102,8 +105,7 @@ namespace ProductHub_MVC.Controllers
                     insertCmd.ExecuteNonQuery();
                 }
 
-                // Perfect for live evaluations! The code will display in a green toast so you can type it live
-                TempData["Success"] = $"✉️ OTP Code Dispatched Live! Use code: {dynamicOtp} (Valid for 5 mins)";
+                TempData["Success"] = $"✉️ OTP Generated! Use Code: {dynamicOtp}";
                 ViewBag.MobileNum = mobileNumber.Trim();
                 return View("VerifyOtp");
             }
@@ -113,40 +115,31 @@ namespace ProductHub_MVC.Controllers
         public IActionResult ResetPasswordWithOtp(string mobileNumber, string otpCode, string newPassword)
         {
             using (var conn = _context.CreateConnection()) {
-                string verifyQuery = @"SELECT COUNT(1) FROM T_OTP_LOG 
-                                      WHERE F_MOBILE_NUMBER = @Num AND F_OTP_CODE = @Otp 
-                                      AND F_EXPIRY_TIME >= GETDATE() AND F_IS_VERIFIED = 0";
-                
+                string verifyQuery = "SELECT COUNT(1) FROM T_OTP_LOG WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp AND F_EXPIRY_TIME>=GETDATE() AND F_IS_VERIFIED=0";
                 using (var cmd = new SqlCommand(verifyQuery, (SqlConnection)conn)) {
                     cmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
                     cmd.Parameters.AddWithValue("@Otp", otpCode.Trim());
                     conn.Open();
-                    
                     if ((int)cmd.ExecuteScalar() == 0) {
-                        TempData["Error"] = "❌ Invalid, consumed, or expired OTP authorization key.";
+                        TempData["Error"] = "❌ Expired or broken token clearance.";
                         ViewBag.MobileNum = mobileNumber;
                         return View("VerifyOtp");
                     }
                 }
-
-                // Consume the token dynamically inside real-time query tables
-                string burnOtp = "UPDATE T_OTP_LOG SET F_IS_VERIFIED = 1 WHERE F_MOBILE_NUMBER = @Num AND F_OTP_CODE = @Otp";
+                string burnOtp = "UPDATE T_OTP_LOG SET F_IS_VERIFIED=1 WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp";
                 using (var burnCmd = new SqlCommand(burnOtp, (SqlConnection)conn)) {
                     burnCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
                     burnCmd.Parameters.AddWithValue("@Otp", otpCode.Trim());
                     burnCmd.ExecuteNonQuery();
                 }
-
-                // Deploy new credential key structures across core profile registers
-                string updatePass = "UPDATE T_USERS SET F_PASSWORD = @Pass WHERE F_MOBILE_NUMBER = @Num";
+                string updatePass = "UPDATE T_USERS SET F_PASSWORD=@Pass WHERE F_MOBILE_NUMBER=@Num";
                 using (var passCmd = new SqlCommand(updatePass, (SqlConnection)conn)) {
                     passCmd.Parameters.AddWithValue("@Pass", newPassword.Trim());
                     passCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
                     passCmd.ExecuteNonQuery();
                 }
             }
-
-            TempData["Success"] = "🎯 Credentials modified! Log in using your new password security key.";
+            TempData["Success"] = "🎯 Password changed cleanly!";
             return RedirectToAction(nameof(Login));
         }
 
