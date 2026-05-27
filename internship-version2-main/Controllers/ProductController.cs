@@ -29,7 +29,7 @@ namespace ProductHub_MVC.Controllers
         // =========================================================
         public IActionResult Index(string sortBy, string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
-            // ✅ STEP 5 SECURE CHECK: Redirect to security gatekeeper if user session footprint doesn't exist
+            // SECURE CHECK: Redirect to security gatekeeper if user session footprint doesn't exist
             if (HttpContext.Session.GetString("UserSession") == null)
             {
                 return RedirectToAction("Login", "Account");
@@ -51,7 +51,7 @@ namespace ProductHub_MVC.Controllers
         // =========================================================
         public IActionResult Compare(List<int> ids)
         {
-            // ✅ STEP 5 SECURE CHECK: Protect comparison profiles from direct URL manipulation entry
+            // SECURE CHECK: Protect comparison profiles from direct URL manipulation entry
             if (HttpContext.Session.GetString("UserSession") == null)
             {
                 return RedirectToAction("Login", "Account");
@@ -101,7 +101,7 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================
-        // 3. CRUD OPERATIONS (ADD & DELETE - AUTHENTICATED)
+        // 3. CRUD OPERATIONS (ADD, EDIT & DELETE - AUTHENTICATED)
         // =========================================================
         [HttpPost]
         public IActionResult AddProduct(Product model)
@@ -134,6 +134,49 @@ namespace ProductHub_MVC.Controllers
                 TempData["SuccessMessage"] = "✅ Product added successfully!";
                 return RedirectToAction(nameof(Index));
             }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public IActionResult EditProduct(Product model)
+        {
+            if (HttpContext.Session.GetString("UserSession") == null) 
+            {
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (ModelState.IsValid)
+            {
+                using (var connection = _context.CreateConnection())
+                {
+                    string query = @"UPDATE T_PRODUCTS 
+                                     SET F_PROD_NAME = @Name, 
+                                         F_BRAND = @Brand, 
+                                         F_QTY = @Qty, 
+                                         F_PRICE = @Price, 
+                                         F_PROD_DESC = @Desc, 
+                                         F_PROD_RATING = @Rating 
+                                     WHERE F_PRODUCT_ID = @Id";
+
+                    using (var command = new SqlCommand(query, (SqlConnection)connection))
+                    {
+                        command.Parameters.AddWithValue("@Id", model.ProductId);
+                        command.Parameters.AddWithValue("@Name", model.ProductName);
+                        command.Parameters.AddWithValue("@Brand", model.Brand);
+                        command.Parameters.AddWithValue("@Qty", model.Quantity);
+                        command.Parameters.AddWithValue("@Price", model.Price);
+                        command.Parameters.AddWithValue("@Desc", model.ProductDescription ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Rating", model.ProductRating);
+
+                        connection.Open();
+                        command.ExecuteNonQuery();
+                    }
+                }
+                TempData["SuccessMessage"] = "✅ Product details updated successfully!";
+                return RedirectToAction(nameof(Index));
+            }
+            
+            TempData["ErrorMessage"] = "❌ Failed to update product details. Please check constraints.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -288,7 +331,7 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =====================================================================
-        // 6. ✅ EXPORT BY CHECKBOX: EMAIL PIPELINE WITH TIMESTAMPED UNIQUE NAMES
+        // 6. EXPORT BY CHECKBOX: EMAIL PIPELINE WITH TIMESTAMPED UNIQUE NAMES
         // =====================================================================
         [HttpPost]
         public async Task<IActionResult> EmailZipData(List<int> ids, string recipientEmail)
@@ -310,7 +353,6 @@ namespace ProductHub_MVC.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // Secure hidden backend account credentials
             string senderEmail = "tpass2829@gmail.com";
             string senderPassword = "uozwlvrkykjzgjmj";
 
@@ -319,7 +361,6 @@ namespace ProductHub_MVC.Controllers
                 OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub");
                 byte[] excelFileBytes;
 
-                // FETCHES ONLY EXPLICITLY CHECKED DATA ROWS OUT OF SQL SERVER
                 List<Product> selectedProducts = new List<Product>();
                 using (var connection = _context.CreateConnection())
                 {
@@ -375,12 +416,10 @@ namespace ProductHub_MVC.Controllers
                     excelFileBytes = package.GetAsByteArray();
                 }
 
-                // ✅ GENERATES DYNAMIC FILE LABELS USING DATES & TIMES TO ELIMINATE CACHE CLASHES
                 string uniqueTimestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 string uniqueExcelName = $"InventoryReport_{uniqueTimestamp}.xlsx";
                 string uniqueZipName = $"ProductPackage_{uniqueTimestamp}.zip";
 
-                // Create compressed ZIP package cleanly in memory
                 byte[] finalZipBytes;
                 using (var zipStream = new MemoryStream())
                 {

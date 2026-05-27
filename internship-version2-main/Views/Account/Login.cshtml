@@ -1,6 +1,6 @@
 @model ProductHub_MVC.Models.User
 @{
-    Layout = null; // Disables main navbar frame links prior to successful login clearance
+    Layout = null; // Keeps the navbar hidden until successfully authenticated
 }
 
 <!DOCTYPE html>
@@ -10,33 +10,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login - ProductHub Gatekeeper Console</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* Top Navigation Style Bar matching image_160bbd.png */
+        .brand-header {
+            background-color: #212529;
+            color: #ffffff;
+            padding: 15px 25px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            font-size: 1.15rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .brand-header i {
+            color: #198754; /* Green accent color from buttons */
+            margin-right: 8px;
+        }
+        /* Login Card Container Wrapper */
+        .login-container {
+            min-height: calc(100vh - 60px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+        }
+        .card-accent-line {
+            height: 4px;
+            background-color: #198754; /* Green accent matching dashboard buttons */
+        }
+        .login-card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            padding: 20px;
+            text-align: center;
+        }
+        .login-card-body {
+            padding: 30px;
+        }
+        /* Input controls styling matching image_160bbd.png */
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #495057;
+            text-uppercase: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-group-text {
+            background-color: #f8f9fa;
+            border-color: #ced4da;
+            color: #6c757d;
+        }
+        .form-control:focus {
+            border-color: #198754;
+            box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.15);
+        }
+        /* Button style matching Compare/Email mix */
+        .btn-authorize {
+            background-color: #212529;
+            border-color: #212529;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 10px;
+            transition: all 0.2s ease;
+        }
+        .btn-authorize:hover {
+            background-color: #198754; /* Highlights to matching green on hover */
+            border-color: #198754;
+            color: #ffffff;
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
+<body>
 
-    <div class="card shadow border-0 p-4 rounded" style="width: 100%; max-width: 420px;">
-        <div class="text-center mb-4">
-            <h3 class="fw-bold text-dark m-0">🔒 PRODUCTHUB CONSOLE</h3>
-            <small class="text-muted text-uppercase fw-semibold" style="font-size:0.75rem;">Authorization Console Gatekeeper</small>
-        </div>
-
-        <form asp-action="Login" method="post">
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger p-2 small fw-semibold"></div>
-
-            <div class="mb-3">
-                <label class="form-label fw-bold small text-secondary">Username Identity</label>
-                <input asp-for="Username" class="form-control" placeholder="Enter username..." autocomplete="off" required />
-                <span asp-validation-for="Username" class="text-danger small"></span>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label fw-bold small text-secondary">Password Security Key</label>
-                <input asp-for="Password" class="form-control" type="password" placeholder="Enter security key..." required />
-                <span asp-validation-for="Password" class="text-danger small"></span>
-            </div>
-
-            <button type="submit" class="btn btn-dark w-100 fw-bold py-2 shadow-sm">Authorize & Login</button>
-        </form>
+    <!-- Professional App Top Header Banner Component -->
+    <div class="brand-header">
+        <i class="fa-solid test fa-cubes"></i>PRODUCTHUB CONSOLE
     </div>
 
+    <!-- Login Form Wrapper Layout Context Matrix -->
+    <div class="login-container">
+        <div class="login-card">
+            <div class="card-accent-line"></div>
+            
+            <div class="login-card-header">
+                <h4 class="fw-bold text-dark mb-1" style="font-size: 1.3rem;">Console Gatekeeper</h4>
+                <p class="text-muted m-0" style="font-size: 0.85rem;">Secure Identity Authorization Gateway</p>
+            </div>
+
+            <div class="login-card-body">
+                <form asp-action="Login" method="post">
+                    
+                    <!-- Validation message alerts display frame -->
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger p-2 small border rounded mb-3">
+                            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                            <div asp-validation-summary="ModelOnly" class="d-inline fw-semibold" style="font-size: 0.82rem;"></div>
+                        </div>
+                    }
+
+                    <!-- Username Field Input Metric Component -->
+                    <div class="mb-3">
+                        <label class="form-label mb-1">Username Identity</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-regular fa-user"></i></span>
+                            <input asp-for="Username" class="form-control" placeholder="Enter dashboard identity..." autocomplete="off" required />
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger small" style="font-size: 0.78rem;"></span>
+                    </div>
+
+                    <!-- Password Field Input Metric Component -->
+                    <div class="mb-4">
+                        <label class="form-label mb-1">Security Key Passphrase</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+                            <input asp-for="Password" class="form-control" type="password" placeholder="Enter secure account key..." required />
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small" style="font-size: 0.78rem;"></span>
+                    </div>
+
+                    <!-- Action Authorization Dispatch Trigger Button -->
+                    <button type="submit" class="btn btn-authorize w-100 shadow-sm rounded mb-2">
+                        <i class="fa-solid fa-shield-halved me-2"></i>Authorize & Access Dashboard
+                    </button>
+                    
+                    <div class="text-center mt-3">
+                        <small class="text-muted" style="font-size: 0.75rem;">
+                            Protected Environment Layer • Connected via LocalDB
+                        </small>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
