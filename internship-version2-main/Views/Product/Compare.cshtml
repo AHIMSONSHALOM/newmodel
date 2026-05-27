@@ -1,65 +1,113 @@
 @model IEnumerable<ProductHub_MVC.Models.Product>
 @{
-    ViewData["Title"] = "Specification Comparison Matrix";
+    ViewData["Title"] = "Product Comparison Dashboard Matrix";
 }
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+<div class="container-fluid mt-4">
+    <!-- TITLE AND TOP BUTTON NAVIGATION ROW -->
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
         <div>
-            <h2 class="fw-bold text-dark mb-0">Product Comparison Dashboard Matrix</h2>
-            <p class="text-muted mb-0">Side-by-side parameters review for @Model.Count() selected items</p>
+            <h2 class="fw-bold text-dark mb-1" style="font-size: 2rem;">Product Comparison Dashboard Matrix</h2>
+            <p class="text-muted" style="font-size: 0.95rem;">Side-by-side parameters review for @Model.Count() selected items</p>
         </div>
-        <a asp-action="Index" class="btn btn-outline-dark btn-sm fw-semibold px-3">
-            Back to Dashboard
-        </a>
+        <div class="d-flex gap-2">
+            <!-- ✅ NEW BUTTON: Triggers the clean Bootstrap layout pop-up modal -->
+            <button class="btn btn-success fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#dispatchCompareEmailModal">
+                Email This Comparison
+            </button>
+            <a asp-action="Index" class="btn btn-outline-dark fw-semibold shadow-sm px-3">
+                Back to Dashboard
+            </a>
+        </div>
     </div>
 
-    <div class="table-responsive shadow-sm rounded border bg-white">
-        <table class="table table-bordered align-middle mb-0 text-center">
-            <thead class="table-dark">
-                <tr>
-                    <th class="text-start bg-secondary text-white ps-4" style="width: 220px;">Specification Metrics</th>
-                    @foreach (var product in Model)
-                    {
-                        <th style="min-width: 220px;">
-                            <span class="badge bg-success mb-2 px-2 py-1">@product.Brand</span>
-                            <h5 class="fw-bold text-white mb-0 text-truncate px-2">@product.ProductName</h5>
-                        </th>
-                    }
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="text-start fw-bold text-secondary bg-light ps-4">Market Valuation Price</td>
-                    @foreach (var product in Model)
-                    {
-                        <td class="text-success fw-bold fs-5">Rs. @product.Price.ToString("N2")</td>
-                    }
-                </tr>
-                <tr>
-                    <td class="text-start fw-bold text-secondary bg-light ps-4">Star Satisfaction Rating</td>
-                    @foreach (var product in Model)
-                    {
-                        <td class="fw-bold text-warning">★ @product.ProductRating.ToString("0.0") / 5.0</td>
-                    }
-                </tr>
-                <tr>
-                    <td class="text-start fw-bold text-secondary bg-light ps-4">Available Inventory Stock</td>
-                    @foreach (var product in Model)
-                    {
-                        <td class="text-muted fw-semibold">@product.Quantity</td>
-                    }
-                </tr>
-                <tr>
-                    <td class="text-start fw-bold text-secondary bg-light ps-4 align-top pt-3">Descriptive Context Features</td>
-                    @foreach (var product in Model)
-                    {
-                        <td class="text-muted px-3 text-start align-top pt-3" style="font-size: 0.88rem; max-width: 260px; line-height: 1.4;">
-                            @product.ProductDescription
-                        </td>
-                    }
-                </tr>
-            </tbody>
-        </table>
+    <!-- SPECIFICATIONS MATRIX TABLE GRID -->
+    <div class="card shadow-sm border rounded">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0 text-center">
+                    <thead class="table-dark" style="background-color: #343a40;">
+                        <tr>
+                            <th class="text-start p-3 fw-bold align-middle" style="width: 220px; min-width: 180px; font-size: 0.95rem;">Specification Metrics</th>
+                            @foreach (var prod in Model)
+                            {
+                                <th class="p-3 align-middle" style="min-width: 200px;">
+                                    <span class="badge bg-success text-white mb-2 px-2 py-1" style="font-size: 0.72rem; text-uppercase: uppercase;">@prod.Brand</span>
+                                    <h4 class="fw-bold text-white m-0" style="font-size: 1.25rem;">@prod.ProductName</h4>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-start fw-bold text-secondary p-3">Market Valuation Price</td>
+                            @foreach (var prod in Model)
+                            {
+                                <td class="text-success fw-bold p-3" style="font-size: 1.15rem;">Rs. @prod.Price.ToString("N2")</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="text-start fw-bold text-secondary p-3">Star Satisfaction Rating</td>
+                            @foreach (var prod in Model)
+                            {
+                                <td class="p-3 fw-semibold text-dark"><span class="text-warning">★</span> @prod.ProductRating.ToString("0.0") / 5.0</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="text-start fw-bold text-secondary p-3">Available Inventory Stock</td>
+                            @foreach (var prod in Model)
+                            {
+                                <td class="p-3 text-dark">@prod.Quantity</td>
+                            }
+                        </tr>
+                        <tr>
+                            <td class="text-start fw-bold text-secondary p-3">Descriptive Context Features</td>
+                            @foreach (var prod in Model)
+                            {
+                                <td class="text-start text-muted p-3 align-top" style="font-size: 0.88rem; line-height: 1.4;">
+                                    @prod.ProductDescription
+                                </td>
+                            }
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================================================================
+     ✅ COMPARED MAILING ACTION MODAL - REUSE SECURE BACKEND ACTIONS
+     =================================================================== -->
+<div class="modal fade" id="dispatchCompareEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <form asp-action="EmailZipData" method="post">
+                
+                <!-- ✅ AUTOMATICALLY BINDS INCOMING UNIQUE OBJECT KEYSTRINGS -->
+                @foreach (var prod in Model)
+                {
+                    <input type="hidden" name="ids" value="@prod.ProductId" />
+                }
+                
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold">📦 Email Comparison Dataset</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="font-size: 0.9rem;">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Recipient Email Address</label>
+                        <input type="email" name="recipientEmail" class="form-control" placeholder="recipient@gmail.com" required />
+                        <div class="form-text text-muted" style="font-size: 0.78rem;">
+                            The background system will compress only these @Model.Count() reviewed rows into a timestamped ZIP spreadsheet archive.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4">Dispatch Mail</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
