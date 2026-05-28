@@ -24,6 +24,7 @@ namespace ProductHub_MVC.Controllers
             _context = context;
         }
 
+        // Centralized tracking helper engine to write audit logs smoothly
         private void LogActivity(string actionType, string description)
         {
             try {
@@ -37,11 +38,11 @@ namespace ProductHub_MVC.Controllers
                         conn.Open(); cmd.ExecuteNonQuery();
                     }
                 }
-            } catch { /* Fail silent */ }
+            } catch { /* Fail-silent to guard thread execution speed */ }
         }
 
         // =========================================================
-        // 1. DATA GRID: MAIN VIEW (WITH DYNAMIC BRAND SECURITY ISOLATION)
+        // 1. DATA GRID: FILTER, SEARCH & COLUMN SWITCHES ENGINE
         // =========================================================
         public IActionResult Index(string sortBy, string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
@@ -63,7 +64,7 @@ namespace ProductHub_MVC.Controllers
             ViewBag.CanUseEdit = HttpContext.Session.GetInt32("CanUseEdit") ?? 0;
             ViewBag.CanUseDelete = HttpContext.Session.GetInt32("CanUseDelete") ?? 0;
 
-            // ✅ READ LIVE BRAND ISOLATION ASSIGNED TO THIS ACTIVE LOGGED IN USER ROW
+            // Read the dynamic corporate brand data isolation row config for this session profile
             string restrictedBrand = "ALL";
             using (var connection = _context.CreateConnection()) {
                 string checkQuery = "SELECT F_RESTRICTED_BRAND FROM T_USERS WHERE F_USERNAME = @User";
@@ -75,7 +76,7 @@ namespace ProductHub_MVC.Controllers
                 }
             }
 
-            // Overwrite incoming search filter if administrator forced an isolated target brand row constraint
+            // Force query lock filter if root administrator has assigned a target brand isolation block
             if (restrictedBrand != "ALL") {
                 brandFilter = restrictedBrand;
                 ViewBag.ForcedIsolationNotice = $"🔒 Restricted Profile View: Data query locked exclusively onto brand data catalogs matching context logs: '{restrictedBrand}'.";
@@ -93,13 +94,73 @@ namespace ProductHub_MVC.Controllers
         }
 
         // =========================================================================
-        // 2. DYNAMIC ACCESS MATRIX: GENERATES DROP-DOWN SEEDS LIVE FROM REAL RECORDS
+        // 2. ⚡ FIXED: COMPARE SIDE-BY-SIDE GRID ACTION MATRIX ENGINE
+        // =========================================================================
+        [HttpGet]
+        public IActionResult Compare(List<int> ids)
+        {
+            if (HttpContext.Session.GetString("UserSession") == null) return RedirectToAction("Login", "Account");
+
+            if (HttpContext.Session.GetInt32("CanCompare") != 1)
+            {
+                TempData["ErrorMessage"] = "🔒 Access Denied: The comparison engine module is disabled for your account profile.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (ids == null || ids.Count < 2 || ids.Count > 4)
+            {
+                TempData["ErrorMessage"] = "Boundary Notice: Please select between 2 and 4 products to compare side-by-side.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Log activity step into history table
+            LogActivity("COMPARE", $"Loaded comparisons dashboard matrices side-by-side for {ids.Count} tracked products parameters.");
+
+            List<Product> comparisonCollection = new List<Product>();
+            using (var connection = _context.CreateConnection())
+            {
+                var parameterNames = string.Join(",", ids.Select((id, index) => $"@Id{index}"));
+                string query = $"SELECT F_PRODUCT_ID, F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING FROM T_PRODUCTS WHERE F_PRODUCT_ID IN ({parameterNames})";
+                
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    for (int i = 0; i < ids.Count; i++)
+                    {
+                        cmd.Parameters.AddWithValue($"@Id{i}", ids[i]);
+                    }
+
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            comparisonCollection.Add(new Product
+                            {
+                                ProductId = Convert.ToInt32(reader["F_PRODUCT_ID"]),
+                                ProductName = reader["F_PROD_NAME"].ToString() ?? string.Empty,
+                                Brand = reader["F_BRAND"].ToString() ?? string.Empty,
+                                Quantity = reader["F_QTY"].ToString() ?? string.Empty,
+                                Price = Convert.ToDouble(reader["F_PRICE"]),
+                                ProductDescription = reader["F_PROD_DESC"]?.ToString() ?? "No specifications provided.",
+                                ProductRating = Convert.ToDouble(reader["F_PROD_RATING"])
+                            });
+                        }
+                    }
+                }
+            }
+
+            // ✅ CLEAN FIX COMPLETE: Cleanly passes data collection directly into Views/Product/Compare.cshtml layout!
+            return View(comparisonCollection);
+        }
+
+        // =========================================================================
+        // 3. SEPARATE USERS ACCESS ROLES & DROPDOWN BRANDS LIFECYCLE CONTROLS
         // =========================================================================
         public IActionResult Users()
         {
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return RedirectToAction(nameof(Index));
 
-            // ✅ CORE GENERATOR: Fetch unique brands dynamically directly from data tables
+            // Generate unique distinct brand parameters list directly from existing products table
             List<string> dynamicDistinctBrands = new List<string> { "ALL" };
             using (var connection = _context.CreateConnection()) {
                 string brandListQuery = "SELECT DISTINCT F_BRAND FROM T_PRODUCTS WHERE F_BRAND IS NOT NULL AND F_BRAND <> '' ORDER BY F_BRAND ASC";
@@ -125,7 +186,7 @@ namespace ProductHub_MVC.Controllers
                             { "Id", reader["F_USER_ID"] }, { "Name", reader["F_USERNAME"].ToString() ?? "" },
                             { "Password", reader["F_PASSWORD"].ToString() ?? "" }, { "Mobile", reader["F_MOBILE_NUMBER"].ToString() ?? "" },
                             { "BackupCode", reader["F_BACKUP_CODE"].ToString() ?? "" }, 
-                            { "RestrictedBrand", reader["F_RESTRICTED_BRAND"].ToString() ?? "ALL" }, // Pack current assignment string
+                            { "RestrictedBrand", reader["F_RESTRICTED_BRAND"].ToString() ?? "ALL" }, 
                             { "IsAdmin", Convert.ToInt32(reader["F_IS_ADMIN"]) },
                             { "AddRow", Convert.ToInt32(reader["F_CAN_ADD_ROW"]) }, { "Download", Convert.ToInt32(reader["F_CAN_DOWNLOAD"]) },
                             { "Import", Convert.ToInt32(reader["F_CAN_IMPORT"]) }, { "Export", Convert.ToInt32(reader["F_CAN_EXPORT"]) },
@@ -159,7 +220,7 @@ namespace ProductHub_MVC.Controllers
                     cmd.Parameters.AddWithValue("@B", seeBrand); cmd.Parameters.AddWithValue("@Q", seeQty);
                     cmd.Parameters.AddWithValue("@P", seePrice); cmd.Parameters.AddWithValue("@R", seeRating);
                     cmd.Parameters.AddWithValue("@E", useEdit); cmd.Parameters.AddWithValue("@D", useDelete);
-                    cmd.Parameters.AddWithValue("@Restrict", restrictedBrand.Trim()); // Bind text drop down selection value
+                    cmd.Parameters.AddWithValue("@Restrict", restrictedBrand.Trim()); 
                     connection.Open(); cmd.ExecuteNonQuery();
                 }
             }
@@ -168,6 +229,9 @@ namespace ProductHub_MVC.Controllers
             return RedirectToAction(nameof(Users));
         }
 
+        // =========================================================================
+        // 4. CENTRALIZED HISTORY TRANSACTION SYSTEM VISUALIZER
+        // =========================================================================
         [HttpGet]
         public IActionResult History(string targetUser)
         {
@@ -204,55 +268,24 @@ namespace ProductHub_MVC.Controllers
             return View(auditLogsCollection);
         }
 
-        [HttpPost]
-        public IActionResult AdministrativeAddUser(string username, string password, string mobile)
-        {
-            if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
-            using (var conn = _context.CreateConnection()) {
-                string query = "INSERT INTO T_USERS (F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER) VALUES (@U, @P, @M)";
-                using (var cmd = new SqlCommand(query, (SqlConnection)conn)) {
-                    cmd.Parameters.AddWithValue("@U", username.Trim()); cmd.Parameters.AddWithValue("@P", password.Trim());
-                    cmd.Parameters.AddWithValue("@M", mobile.Trim());
-                    conn.Open(); cmd.ExecuteNonQuery();
-                }
-            }
-            LogActivity("USER_MANAGEMENT", $"Created brand-new login profile mapping entry row: '{username.Trim()}' linked with mobile: {mobile}.");
-            return RedirectToAction(nameof(Users));
-        }
-
-        [HttpPost]
-        public IActionResult AdministrativeDeleteUser(int userId, string targetName)
-        {
-            if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
-            using (var conn = _context.CreateConnection()) {
-                string query = "DELETE FROM T_USERS WHERE F_USER_ID = @Id AND F_IS_ADMIN = 0";
-                using (var cmd = new SqlCommand(query, (SqlConnection)conn)) {
-                    cmd.Parameters.AddWithValue("@Id", userId);
-                    conn.Open(); cmd.ExecuteNonQuery();
-                }
-            }
-            LogActivity("USER_MANAGEMENT", $"Pruned user account profile registry rows completely: '{targetName}'.");
-            return RedirectToAction(nameof(Users));
-        }
-
-        [HttpPost]
-        public IActionResult AdministrativeChangeUserPassword(int userId, string targetName, string nextPassword)
-        {
-            if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
-            using (var conn = _context.CreateConnection()) {
-                string query = "UPDATE T_USERS SET F_PASSWORD = @P WHERE F_USER_ID = @Id";
-                using (var cmd = new SqlCommand(query, (SqlConnection)conn)) {
-                    cmd.Parameters.AddWithValue("@P", nextPassword.Trim()); cmd.Parameters.AddWithValue("@Id", userId);
-                    conn.Open(); cmd.ExecuteNonQuery();
-                }
-            }
-            LogActivity("PASSWORD_CHANGE", $"Forced password credential modification overwrite for account user: '{targetName}'.");
-            return RedirectToAction(nameof(Users));
-        }
-
+        // =========================================================
+        // 5. INVENTORY CRUD LOGISTICS HANDLERS
+        // =========================================================
         [HttpPost] public IActionResult AddProduct(Product m) { using (var c = _context.CreateConnection()) { string q = "INSERT INTO T_PRODUCTS (F_PROD_NAME,F_BRAND,F_QTY,F_PRICE,F_PROD_RATING) VALUES (@N,@B,@Q,@P,@R)"; using (var cmd = new SqlCommand(q,(SqlConnection)c)) { cmd.Parameters.AddWithValue("@N",m.ProductName); cmd.Parameters.AddWithValue("@B",m.Brand); cmd.Parameters.AddWithValue("@Q",m.Quantity); cmd.Parameters.AddWithValue("@P",m.Price); cmd.Parameters.AddWithValue("@R",m.ProductRating); c.Open(); cmd.ExecuteNonQuery(); } } LogActivity("ADD_ROW", $"Inserted brand-new inventory data row item: '{m.ProductName}' priced at Rs. {m.Price}."); return RedirectToAction(nameof(Index)); }
         [HttpPost] public IActionResult EditProduct(Product m) { using (var c = _context.CreateConnection()) { string q = "UPDATE T_PRODUCTS SET F_PROD_NAME=@N,F_BRAND=@B,F_QTY=@Q,F_PRICE=@P,F_PROD_RATING=@R WHERE F_PRODUCT_ID=@I"; using (var cmd = new SqlCommand(q,(SqlConnection)c)) { cmd.Parameters.AddWithValue("@I",m.ProductId); cmd.Parameters.AddWithValue("@N",m.ProductName); cmd.Parameters.AddWithValue("@B",m.Brand); cmd.Parameters.AddWithValue("@Q",m.Quantity); cmd.Parameters.AddWithValue("@P",m.Price); cmd.Parameters.AddWithValue("@R",m.ProductRating); c.Open(); cmd.ExecuteNonQuery(); } } LogActivity("EDIT", $"Updated inventory data specification parameters for component: '{m.ProductName}'."); return RedirectToAction(nameof(Index)); }
         [HttpPost] public IActionResult DeleteProduct(int id) { string namePlaceholder = $"ID {id}"; using (var c = _context.CreateConnection()) { c.Open(); using (var getNameCmd = new SqlCommand("SELECT F_PROD_NAME FROM T_PRODUCTS WHERE F_PRODUCT_ID=@Id", (SqlConnection)c)) { getNameCmd.Parameters.AddWithValue("@Id", id); namePlaceholder = getNameCmd.ExecuteScalar()?.ToString() ?? namePlaceholder; } using (var cmd = new SqlCommand("DELETE FROM T_PRODUCTS WHERE F_PRODUCT_ID=@I",(SqlConnection)c)) { cmd.Parameters.AddWithValue("@I",id); cmd.ExecuteNonQuery(); } } LogActivity("DELETE", $"Removed item row permanently from product catalog: '{namePlaceholder}'."); return RedirectToAction(nameof(Index)); }
+
+        [HttpPost] public IActionResult AdministrativeAddUser(string username, string password, string mobile) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "INSERT INTO T_USERS (F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER) VALUES (@U, @P, @M)"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@U", username.Trim()); cmd.Parameters.AddWithValue("@P", password.Trim()); cmd.Parameters.AddWithValue("@M", mobile.Trim()); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("USER_MANAGEMENT", $"Created brand-new login profile mapping entry row: '{username.Trim()}' linked with mobile: {mobile}."); return RedirectToAction(nameof(Users)); }
+        [HttpPost] public IActionResult AdministrativeDeleteUser(int userId, string targetName) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "DELETE FROM T_USERS WHERE F_USER_ID = @Id AND F_IS_ADMIN = 0"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@Id", userId); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("USER_MANAGEMENT", $"Pruned user account profile registry rows completely: '{targetName}'."); return RedirectToAction(nameof(Users)); }
+        [HttpPost] public IActionResult AdministrativeChangeUserPassword(int userId, string targetName, string nextPassword) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "UPDATE T_USERS SET F_PASSWORD = @P WHERE F_USER_ID = @Id"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@P", nextPassword.Trim()); cmd.Parameters.AddWithValue("@Id", userId); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("PASSWORD_CHANGE", $"Forced password credential modification overwrite for account user: '{targetName}'."); return RedirectToAction(nameof(Users)); }
+
+        // =========================================================
+        // 6. FILE STREAMS SYSTEM OPERATIONS PLUGINS (EPPLUS)
+        // =========================================================
+        public IActionResult DownloadTemplate() { LogActivity("DOWNLOAD", "Requested an empty standard Excel layout parsing template spreadsheet package file."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); using (var p = new ExcelPackage()) { var worksheet = p.Workbook.Worksheets.Add("Template"); BuildExcelHeaderSchema(worksheet); return File(p.GetAsByteArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ProductTemplate.xlsx"); } }
+        public IActionResult ExportData(string brandFilter, double? minPrice, double? maxPrice, double? minRating) { LogActivity("EXPORT", "Generated spreadsheet download package compiling custom active catalog table filters data logs."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); List<Product> products = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, ""); using (var package = new ExcelPackage()) { var worksheet = package.Workbook.Worksheets.Add("Records"); BuildExcelHeaderSchema(worksheet); int r = 2; foreach (var p in products) { worksheet.Cells[r, 1].Value = p.ProductName; worksheet.Cells[r, 2].Value = p.Brand; worksheet.Cells[r, 3].Value = p.Quantity; worksheet.Cells[r, 4].Value = p.Price; worksheet.Cells[r, 6].Value = p.ProductRating; r++; } return File(package.GetAsByteArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ProductHub_Export.xlsx"); } }
+        [HttpPost] public IActionResult ImportData(IFormFile alexaExcelFile) { LogActivity("IMPORT", "Uploaded file spreadsheet stream dataset packages for core table processing matrix loops."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); using (var stream = new MemoryStream()) { alexaExcelFile.CopyTo(stream); using (var package = new ExcelPackage(stream)) { var ws = package.Workbook.Worksheets.FirstOrDefault(); if (ws != null && ws.Dimension != null) { using (var conn = _context.CreateConnection()) { conn.Open(); for (int row = 2; row <= ws.Dimension.End.Row; row++) { string name = ws.Cells[row, 1].Value?.ToString() ?? ""; if (string.IsNullOrEmpty(name)) continue; string q = "INSERT INTO T_PRODUCTS (F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_RATING) VALUES (@N, @B, @Q, @P, @R)"; using (var cmd = new SqlCommand(q, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@N", name); cmd.Parameters.AddWithValue("@B", ws.Cells[row, 2].Value?.ToString() ?? ""); cmd.Parameters.AddWithValue("@Q", ws.Cells[row, 3].Value?.ToString() ?? ""); cmd.Parameters.AddWithValue("@P", Convert.ToDouble(ws.Cells[row, 4].Value ?? 0)); cmd.Parameters.AddWithValue("@R", Convert.ToDouble(ws.Cells[row, 6].Value ?? 0)); cmd.ExecuteNonQuery(); } } } } } } return RedirectToAction(nameof(Index)); }
+        [HttpPost] public async Task<IActionResult> EmailZipData(List<int> ids, string recipientEmail) { LogActivity("EMAIL", $"Dispatched an archival compressed Zip data record spreadsheet packet straight to mail-id: {recipientEmail}."); string senderEmail = "tpass2829@gmail.com"; string senderPassword = "uozwlvrkykjzgjmj"; byte[] excelBytes; List<Product> prods = new List<Product>(); using (var connection = _context.CreateConnection()) { var pNames = string.Join(",", ids.Select((id, idx) => $"@Id{idx}")); string query = $"SELECT F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_RATING FROM T_PRODUCTS WHERE F_PRODUCT_ID IN ({pNames})"; using (var cmd = new SqlCommand(query, (SqlConnection)connection)) { for (int i = 0; i < ids.Count; i++) cmd.Parameters.AddWithValue($"@Id{i}", ids[i]); connection.Open(); using (var reader = cmd.ExecuteReader()) { while (reader.Read()) prods.Add(new Product { ProductName = reader["F_PROD_NAME"].ToString() ?? "", Brand = reader["F_BRAND"].ToString() ?? "", Quantity = reader["F_QTY"].ToString() ?? "", Price = Convert.ToDouble(reader["F_PRICE"]), ProductRating = Convert.ToDouble(reader["F_PROD_RATING"]) }); } } } using (var package = new ExcelPackage()) { var ws = package.Workbook.Worksheets.Add("Report"); BuildExcelHeaderSchema(ws); int r = 2; foreach (var p in prods) { ws.Cells[r,1].Value = p.ProductName; ws.Cells[r,2].Value = p.Brand; ws.Cells[r,3].Value = p.Quantity; ws.Cells[r,4].Value = p.Price; ws.Cells[r,6].Value = p.ProductRating; r++; } excelBytes = package.GetAsByteArray(); } byte[] zipBytes; using (var ms = new MemoryStream()) { using (var arc = new ZipArchive(ms, ZipArchiveMode.Create, true)) { var entry = arc.CreateEntry("Report.xlsx", System.IO.Compression.CompressionLevel.Optimal); using (var es = entry.Open()) es.Write(excelBytes, 0, excelBytes.Length); } zipBytes = ms.ToArray(); } using (MailMessage mail = new MailMessage()) { mail.From = new MailAddress(senderEmail); mail.To.Add(recipientEmail.Trim()); mail.Subject = "📦 Inventory Report Portfolio Package"; mail.Body = "Attached Zip Sheet Archive."; mail.Attachments.Add(new Attachment(new MemoryStream(zipBytes), "Report.zip")); using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { smtp.EnableSsl = true; smtp.UseDefaultCredentials = false; smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); await smtp.SendMailAsync(mail); } } return RedirectToAction(nameof(Index)); }
 
         private void BuildExcelHeaderSchema(ExcelWorksheet sheet) { sheet.Cells[1, 1].Value = "Product Name"; sheet.Cells[1, 2].Value = "Brand"; sheet.Cells[1, 3].Value = "Quantity"; sheet.Cells[1, 4].Value = "Price"; sheet.Cells[1, 5].Value = "Description"; sheet.Cells[1, 6].Value = "Rating"; }
         private List<Product> FetchFilteredProducts(string brand, double? minP, double? maxP, double? minR, string sort) { List<Product> list = new List<Product>(); using (var connection = _context.CreateConnection()) { string query = "SELECT F_PRODUCT_ID, F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING FROM T_PRODUCTS WHERE 1=1"; if (!string.IsNullOrEmpty(brand)) query += " AND F_BRAND LIKE @B"; if (minP.HasValue) query += " AND F_PRICE >= @MinP"; if (maxP.HasValue) query += " AND F_PRICE <= @MaxP"; if (minR.HasValue) query += " AND F_PROD_RATING >= @MinR"; using (var cmd = new SqlCommand(query, (SqlConnection)connection)) { cmd.Parameters.AddWithValue("@B", !string.IsNullOrEmpty(brand) ? "%" + brand + "%" : DBNull.Value); cmd.Parameters.AddWithValue("@MinP", minP ?? (object)DBNull.Value); cmd.Parameters.AddWithValue("@MaxP", maxP ?? (object)DBNull.Value); cmd.Parameters.AddWithValue("@MinR", minR ?? (object)DBNull.Value); connection.Open(); using (var reader = cmd.ExecuteReader()) { while (reader.Read()) list.Add(new Product { ProductId = Convert.ToInt32(reader["F_PRODUCT_ID"]), ProductName = reader["F_PROD_NAME"].ToString() ?? "", Brand = reader["F_BRAND"].ToString() ?? "", Quantity = reader["F_QTY"].ToString() ?? "", Price = Convert.ToDouble(reader["F_PRICE"]), ProductDescription = reader["F_PROD_DESC"]?.ToString(), ProductRating = Convert.ToDouble(reader["F_PROD_RATING"]) }); } } } return list; }
