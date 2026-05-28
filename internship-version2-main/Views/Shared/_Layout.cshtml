@@ -19,9 +19,16 @@
                 <i class="fa-solid fa-cubes text-success me-2"></i> PRODUCTHUB CONSOLE
             </a>
 
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
                 @if (Context.Session.GetString("UserSession") != null)
                 {
+                    @if (Context.Session.GetInt32("IsAdmin") == 1)
+                    {
+                        <a class="btn btn-sm btn-outline-warning fw-bold px-3 border-warning-subtle text-warning me-1" asp-action="History" asp-controller="Product">
+                            <i class="fa-solid fa-clock-history me-1"></i> System Audit Logs
+                        </a>
+                    }
+
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-light dropdown-toggle fw-bold text-uppercase px-3 border-secondary" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa-solid fa-user-shield text-success me-1"></i> @Context.Session.GetString("UserSession")
@@ -34,6 +41,11 @@
                                 <li>
                                     <a class="dropdown-item fw-semibold text-primary py-2" asp-action="Users" asp-controller="Product">
                                         <i class="fa-solid fa-users-gear me-2"></i> Manage User Controls
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item fw-semibold text-warning py-2" asp-action="History" asp-controller="Product">
+                                        <i class="fa-solid fa-timeline me-2"></i> View Global History
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>

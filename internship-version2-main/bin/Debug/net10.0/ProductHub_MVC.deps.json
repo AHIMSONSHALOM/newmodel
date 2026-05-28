@@ -12,7 +12,8 @@
           "MailKit": "4.16.0",
           "Mailtrap": "1.1.0",
           "Microsoft.Data.SqlClient": "7.0.1",
-          "SendGrid": "9.29.3"
+          "SendGrid": "9.29.3",
+          "Twilio": "7.14.9"
         },
         "runtime": {
           "ProductHub_MVC.dll": {}
@@ -333,6 +334,19 @@
             "fileVersion": "9.0.1326.6317"
           }
         }
+      },
+      "Twilio/7.14.9": {
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.16.0",
+          "Newtonsoft.Json": "13.0.1",
+          "System.IdentityModel.Tokens.Jwt": "8.16.0"
+        },
+        "runtime": {
+          "lib/net6.0/Twilio.dll": {
+            "assemblyVersion": "7.14.9.0",
+            "fileVersion": "7.14.9.0"
+          }
+        }
       }
     }
   },
@@ -516,6 +530,13 @@
       "sha512": "sha512-t8S9IDpjJKsLpLkeBdW8cWtcPyYqrGu93Dej1RO6WwuL/lkFSqWlan3rMJfortqz1mRIh+sys2AFsSA6jWJ3Jg==",
       "path": "system.security.cryptography.protecteddata/9.0.13",
       "hashPath": "system.security.cryptography.protecteddata.9.0.13.nupkg.sha512"
+    },
+    "Twilio/7.14.9": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dYFgEoNofKasj2cpYddZT7yVkBexkQz4eTlQ4c72BO2H1H8UbTGGl9Aa7NIFBUuTcdNWOYwIZlHjmitlRng28g==",
+      "path": "twilio/7.14.9",
+      "hashPath": "twilio.7.14.9.nupkg.sha512"
     }
   }
 }

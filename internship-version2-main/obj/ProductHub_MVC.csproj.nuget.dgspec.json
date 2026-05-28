@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {}
+    "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {
+    "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
+        "projectUniqueName": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
         "projectName": "ProductHub_MVC",
-        "projectPath": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
+        "projectPath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
         "packagesPath": "C:\\Users\\Aspl-Training\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\obj\\",
+        "outputPath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

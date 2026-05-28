@@ -7,12 +7,6 @@
 <div class="container-fluid mt-1">
     <div class="d-flex justify-content-end align-items-center mb-3 flex-wrap gap-2 bg-white p-2 rounded shadow-sm border">
         <div class="d-flex gap-2">
-            @if (ViewBag.IsAdmin == 1)
-            {
-                <a asp-action="Users" class="btn btn-outline-dark fw-semibold shadow-sm px-3">
-                    <i class="fa-solid fa-users-gear text-success me-1"></i> Manage User Controls
-                </a>
-            }
             @if (ViewBag.CanAddRow == 1)
             {
                 <button class="btn btn-success fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addProductModal">Add Row</button>
@@ -40,6 +34,14 @@
         </div>
     </div>
 
+    @if (ViewBag.ForcedIsolationNotice != null)
+    {
+        <div class="alert alert-warning border-0 bg-white shadow-sm p-3 mx-1 mb-3 small fw-bold text-dark rounded border-start border-4 border-warning d-flex align-items-center">
+            <i class="fa-solid fa-shield-halved text-warning fs-5 me-2"></i>
+            <span>@ViewBag.ForcedIsolationNotice</span>
+        </div>
+    }
+
     <div class="row g-3">
         <div class="col-md-3">
             <div class="card shadow-sm border rounded">
@@ -61,19 +63,8 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold text-secondary small">+ Price Range</label>
                             <div class="d-flex gap-2">
-                                <input type="number" name="minPrice" value="@ViewBag.MinPrice" class="form-control form-control-sm" placeholder="Min Price" />
-                                <input type="number" name="maxPrice" value="@ViewBag.MaxPrice" class="form-control form-control-sm" placeholder="Max Price" />
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-secondary small">+ Ratings</label>
-                            <div class="form-check small mb-1">
-                                <input class="form-check-input" type="radio" name="minRating" value="4.5" id="rate45" @(ViewBag.MinRating == 4.5 ? "checked" : "")>
-                                <label class="form-check-label text-dark" for="rate45">⭐ 4.5 & Up</label>
-                            </div>
-                            <div class="form-check small mb-1">
-                                <input class="form-check-input" type="radio" name="minRating" value="4.0" id="rate40" @(ViewBag.MinRating == 4.0 ? "checked" : "")>
-                                <label class="form-check-label text-dark" for="rate40">⭐ 4.0 & Up</label>
+                                <input type="number" name="minPrice" value="@ViewBag.MinPrice" class="form-control form-control-sm" placeholder="Min" />
+                                <input type="number" name="maxPrice" value="@ViewBag.MaxPrice" class="form-control form-control-sm" placeholder="Max" />
                             </div>
                         </div>
                         <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold py-2 mb-2">Apply Filters</button>
@@ -92,15 +83,12 @@
                                 <thead class="table-light text-secondary small fw-bold">
                                     <tr>
                                         <th style="width: 60px;">S.No</th>
-                                        
                                         @if (ViewBag.CanUseEdit == 1 || ViewBag.CanUseDelete == 1)
                                         {
                                             <th style="width: 140px;">Action</th>
                                         }
-                                        
                                         <th style="width: 40px;"><input type="checkbox" id="selectAllBoxes" class="form-check-input" /></th>
                                         <th class="text-start">Product Name ↕️</th>
-                                        
                                         @if (ViewBag.CanSeeBrand == 1) { <th>Brand</th> }
                                         @if (ViewBag.CanSeeQty == 1) { <th>Quantity</th> }
                                         @if (ViewBag.CanSeePrice == 1) { <th>Price ↕️</th> }
@@ -112,7 +100,6 @@
                                     {
                                         <tr>
                                             <td class="text-secondary fw-semibold">@(sequentialNumber++)</td>
-                                            
                                             @if (ViewBag.CanUseEdit == 1 || ViewBag.CanUseDelete == 1)
                                             {
                                                 <td>
@@ -128,10 +115,8 @@
                                                     </div>
                                                 </td>
                                             }
-                                            
                                             <td><input type="checkbox" name="ids" value="@prod.ProductId" class="form-check-input row-item-checkbox" /></td>
                                             <td class="text-start fw-semibold text-dark">@prod.ProductName</td>
-                                            
                                             @if (ViewBag.CanSeeBrand == 1) { <td><span class="badge bg-light text-dark border px-2 py-1">@prod.Brand</span></td> }
                                             @if (ViewBag.CanSeeQty == 1) { <td class="text-secondary">@prod.Quantity</td> }
                                             @if (ViewBag.CanSeePrice == 1) { <td class="text-success fw-bold">Rs. @prod.Price.ToString("N2")</td> }
@@ -196,8 +181,8 @@
 
 <script>
     document.getElementById('selectAllBoxes').addEventListener('change', function() {
-        let targets = document.querySelectorAll('.row-item-checkbox');
-        targets.forEach(box => box.checked = this.checked);
+        let boxes = document.querySelectorAll('.row-item-checkbox');
+        boxes.forEach(box => box.checked = this.checked);
     });
     function triggerComparison() {
         let checkboxes = document.querySelectorAll('.row-item-checkbox:checked');
@@ -222,7 +207,7 @@
         form.submit();
     }
     function triggerDeletePost(id) {
-        if(confirm("Delete this record component?")) {
+        if(confirm("Delete this record component permanently?")) {
             let f = document.createElement('form'); f.method = 'POST'; f.action = '/Product/DeleteProduct/' + id;
             document.body.appendChild(f); f.submit();
         }

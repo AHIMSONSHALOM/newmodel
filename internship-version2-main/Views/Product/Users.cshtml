@@ -1,6 +1,7 @@
 @model IEnumerable<Dictionary<string, object>>
 @{
     ViewData["Title"] = "User Control Panel";
+    var dynamicBrandsList = ViewBag.AvailableBrandsList as List<string> ?? new List<string> { "ALL" };
 }
 
 <div class="container-fluid mt-3">
@@ -13,8 +14,8 @@
             <button class="btn btn-primary fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addNewUserModal">
                 <i class="fa-solid fa-user-plus me-1"></i> Add New User Account
             </button>
+            <a asp-action="History" class="btn btn-warning fw-semibold shadow-sm px-3"><i class="fa-solid fa-history me-1"></i> View Global Logs</a>
             <a asp-action="Index" class="btn btn-dark fw-semibold shadow-sm px-3">Dashboard</a>
-            <a asp-action="Logout" asp-controller="Account" class="btn btn-danger fw-semibold shadow-sm px-3">Logout</a>
         </div>
     </div>
 
@@ -28,8 +29,9 @@
                             <th>Username Profile</th>
                             <th>Registered Mobile</th>
                             <th>Password Key</th>
-                            <th>Actions</th>
-                            <th class="text-start p-3" style="width: 600px;">Features Access Switches Control Frame</th>
+                            <th>Backup Failsafe Code</th>
+                            <th>Actions Control</th>
+                            <th class="text-start p-3" style="width: 580px;">Features Access Switches Control Frame</th>
                         </tr>
                     </thead>
                     <tbody class="text-dark small">
@@ -41,15 +43,26 @@
                                 <td class="fw-semibold text-secondary">📱 @u["Mobile"]</td>
                                 <td><code class="bg-light border px-2 py-1 text-danger rounded fw-bold">@u["Password"]</code></td>
                                 <td>
+                                    <span class="badge bg-light text-dark border px-2 py-1 fw-mono text-uppercase">
+                                        <i class="fa-solid fa-file-shield text-primary me-1"></i> @u["BackupCode"]
+                                    </span>
+                                </td>
+                                <td>
                                     @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
                                         <span class="badge bg-danger">SYSTEM ROOT ADMIN</span>
                                     } else {
-                                        <div class="d-flex justify-content-center gap-1">
-                                            <button type="button" class="btn btn-xs btn-outline-primary fw-bold" onclick="openPassChangeModal('@u["Id"]', '@u["Name"]')">Pass</button>
-                                            <form asp-action="AdministrativeDeleteUser" method="post" onsubmit="return confirm('Prune this account record completely from active registers?');">
-                                                <input type="hidden" name="userId" value="@u["Id"]" />
-                                                <button type="submit" class="btn btn-xs btn-outline-danger fw-bold">Delete</button>
-                                            </form>
+                                        <div class="d-flex flex-column gap-1 align-items-center">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <button type="button" class="btn btn-xs btn-outline-primary fw-bold" onclick="openPassChangeModal('@u["Id"]', '@u["Name"]')">Pass</button>
+                                                <form asp-action="AdministrativeDeleteUser" method="post" onsubmit="return confirm('Prune account record completely?');">
+                                                    <input type="hidden" name="userId" value="@u["Id"]" />
+                                                    <input type="hidden" name="targetName" value="@u["Name"]" />
+                                                    <button type="submit" class="btn btn-xs btn-outline-danger fw-bold">Delete</button>
+                                                </form>
+                                            </div>
+                                            <a asp-action="History" asp-route-targetUser="@u["Name"]" class="btn btn-xs btn-success text-white fw-bold w-100 mt-1" style="font-size:0.7rem; padding:2px 4px;">
+                                                <i class="fa-solid fa-clock-history me-1"></i> View History
+                                            </a>
                                         </div>
                                     }
                                 </td>
@@ -59,74 +72,48 @@
                                     } else {
                                         <form asp-action="SaveUserConfig" method="post" class="p-3 bg-light border rounded">
                                             <input type="hidden" name="userId" value="@u["Id"]" />
+                                            <input type="hidden" name="userNameParam" value="@u["Name"]" />
                                             
                                             <div class="row text-start mb-2">
-                                                <div class="col-md-6 mb-2">
+                                                <div class="col-md-5 mb-2">
                                                     <div class="fw-bold text-primary mb-1 border-bottom pb-1" style="font-size:0.75rem; text-transform:uppercase;">Top Utility Buttons</div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["AddRow"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="addRow" value="@u["AddRow"]" />
-                                                        <label class="form-check-label text-muted small">Add Row Button</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Download"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="download" value="@u["Download"]" />
-                                                        <label class="form-check-label text-muted small">Download Template</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Import"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="import" value="@u["Import"]" />
-                                                        <label class="form-check-label text-muted small">Import Excel</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Export"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="export" value="@u["Export"]" />
-                                                        <label class="form-check-label text-muted small">Export Data</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Compare"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="compare" value="@u["Compare"]" />
-                                                        <label class="form-check-label text-muted small">Compare Actions</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Email"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="email" value="@u["Email"]" />
-                                                        <label class="form-check-label text-muted small">Email Services</label>
-                                                    </div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["AddRow"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="addRow" value="@u["AddRow"]" /><label class="form-check-label text-muted small">Add Row Button</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Download"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="download" value="@u["Download"]" /><label class="form-check-label text-muted small">Download Template</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Import"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="import" value="@u["Import"]" /><label class="form-check-label text-muted small">Import Excel</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Export"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="export" value="@u["Export"]" /><label class="form-check-label text-muted small">Export Data</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Compare"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="compare" value="@u["Compare"]" /><label class="form-check-label text-muted small">Compare Actions</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Email"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="email" value="@u["Email"]" /><label class="form-check-label text-muted small">Email Services</label></div>
                                                 </div>
                                                 
-                                                <div class="col-md-6 mb-2">
+                                                <div class="col-md-7 mb-2">
                                                     <div class="fw-bold text-success mb-1 border-bottom pb-1" style="font-size:0.75rem; text-transform:uppercase;">Columns & Row Actions</div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeBrand"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="seeBrand" value="@u["SeeBrand"]" />
-                                                        <label class="form-check-label text-muted small">Show Brand Column</label>
+                                                    
+                                                    <!-- ✅ UPGRADED CONTAINER: SHOW BRAND COLUMN + DYNAMIC RECORD ISOLATION DROPDOWN -->
+                                                    <div class="d-flex align-items-center justify-content-between my-1 bg-white p-1 rounded border">
+                                                        <div class="form-check form-switch ps-5">
+                                                            <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeBrand"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                            <input type="hidden" name="seeBrand" value="@u["SeeBrand"]" />
+                                                            <label class="form-check-label text-muted small fw-bold">Show Brand</label>
+                                                        </div>
+                                                        <div class="pe-1">
+                                                            <select name="restrictedBrand" class="form-select form-select-sm border-success text-success fw-bold py-0" style="font-size:0.75rem; min-width:110px; height:24px;">
+                                                                @foreach (var brandName in dynamicBrandsList)
+                                                                {
+                                                                    if (u["RestrictedBrand"].ToString() == brandName) {
+                                                                        <option value="@brandName" selected>🎯 @brandName</option>
+                                                                    } else {
+                                                                        <option value="@brandName">@brandName</option>
+                                                                    }
+                                                                }
+                                                            </select>
+                                                        </div>
                                                     </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeQty"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="seeQty" value="@u["SeeQty"]" />
-                                                        <label class="form-check-label text-muted small">Show Quantity Column</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeePrice"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="seePrice" value="@u["SeePrice"]" />
-                                                        <label class="form-check-label text-muted small">Show Price Column</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeRating"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="seeRating" value="@u["SeeRating"]" />
-                                                        <label class="form-check-label text-muted small">Show Rating Column</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1 border-top pt-1 mt-2">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseEdit"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="useEdit" value="@u["UseEdit"]" />
-                                                        <label class="form-check-label text-muted small fw-bold text-primary">Enable Inline Edit</label>
-                                                    </div>
-                                                    <div class="form-check form-switch ps-5 my-1">
-                                                        <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseDelete"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                        <input type="hidden" name="useDelete" value="@u["UseDelete"]" />
-                                                        <label class="form-check-label text-muted small fw-bold text-danger">Enable Inline Delete</label>
-                                                    </div>
+
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeQty"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seeQty" value="@u["SeeQty"]" /><label class="form-check-label text-muted small">Show Quantity Column</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeePrice"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seePrice" value="@u["SeePrice"]" /><label class="form-check-label text-muted small">Show Price Column</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeRating"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seeRating" value="@u["SeeRating"]" /><label class="form-check-label text-muted small">Show Rating Column</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1 border-top pt-1 mt-2"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseEdit"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="useEdit" value="@u["UseEdit"]" /><label class="form-check-label text-muted small fw-bold text-primary">Enable Inline Edit</label></div>
+                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseDelete"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="useDelete" value="@u["UseDelete"]" /><label class="form-check-label text-muted small fw-bold text-danger">Enable Inline Delete</label></div>
                                                 </div>
                                             </div>
                                             
@@ -143,15 +130,16 @@
     </div>
 </div>
 
+<!-- MODALS CONTAINER -->
 <div class="modal fade" id="addNewUserModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">
             <form asp-action="AdministrativeAddUser" method="post">
                 <div class="modal-header bg-dark text-white"><h5 class="modal-title fw-bold">👤 Append New Account Mapping</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body small">
-                    <div class="mb-3"><label class="form-label fw-bold">Account Username Profile</label><input type="text" name="username" class="form-control form-control-sm" placeholder="e.g. user3" required /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Mobile Registration Number</label><input type="text" name="mobile" class="form-control form-control-sm" placeholder="e.g. 9876543213" required /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Password Security Key</label><input type="text" name="password" class="form-control form-control-sm" placeholder="Set initial secret key..." required /></div>
+                    <div class="mb-3"><label class="form-label fw-bold">Account Username Profile</label><input type="text" name="username" class="form-control form-control-sm" required /></div>
+                    <div class="mb-3"><label class="form-label fw-bold">Mobile Registration Number</label><input type="text" name="mobile" class="form-control form-control-sm" required /></div>
+                    <div class="mb-3"><label class="form-label fw-bold">Password Security Key</label><input type="text" name="password" class="form-control form-control-sm" required /></div>
                 </div>
                 <div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm px-4">Register User</button></div>
             </form>
@@ -164,10 +152,11 @@
         <div class="modal-content border-0 shadow">
             <form asp-action="AdministrativeChangeUserPassword" method="post">
                 <input type="hidden" name="userId" id="tgt_userId" />
+                <input type="hidden" name="targetName" id="tgt_username_hidden" />
                 <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">🔑 Overwrite User Password</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body small">
                     <div class="mb-3"><label class="form-label fw-bold">Target Account Profile</label><input type="text" id="tgt_username" class="form-control form-control-sm bg-light" readonly /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Input New Password Security Key</label><input type="text" name="nextPassword" class="form-control form-control-sm" placeholder="Type next alpha-numeric key string..." required /></div>
+                    <div class="mb-3"><label class="form-label fw-bold">Input New Password Security Key</label><input type="text" name="nextPassword" class="form-control form-control-sm" required /></div>
                 </div>
                 <div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm px-4">Overwrite Key</button></div>
             </form>
@@ -178,6 +167,7 @@
 <script>
     function openPassChangeModal(id, name) {
         document.getElementById('tgt_userId').value = id;
+        document.getElementById('tgt_username_hidden').value = name;
         document.getElementById('tgt_username').value = "👤 " + name;
         new bootstrap.Modal(document.getElementById('adminPassChangeModal')).show();
     }
