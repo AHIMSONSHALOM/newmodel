@@ -90,6 +90,12 @@
             <div class="text-center">
                 <h1 class="login-title">Log in</h1>
             </div>
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success p-2 small border-0 mb-3 text-center fw-semibold">
+                    @TempData["Success"]
+                </div>
+            }
 
             <!-- Validation Error Alert Display -->
             @if (!ViewData.ModelState.IsValid)

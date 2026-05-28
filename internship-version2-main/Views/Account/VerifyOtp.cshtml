@@ -11,7 +11,16 @@
         @if (TempData["Success"] != null) { <div class="alert alert-success small py-2 text-success fw-bold border-0">@TempData["Success"]</div> }
         @if (TempData["Error"] != null) { <div class="alert alert-danger small py-2 border-0">@TempData["Error"]</div> }
         <form asp-action="ResetPasswordWithOtp" method="post">
+            <input type="hidden" name="username" value="@ViewBag.Username" />
             <input type="hidden" name="mobileNumber" value="@ViewBag.MobileNum" />
+            <div class="mb-2">
+                <label class="form-label fw-bold small text-secondary">Username</label>
+                <input type="text" class="form-control form-control-sm bg-light" value="@ViewBag.Username" readonly />
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-secondary">Mobile Number</label>
+                <input type="text" class="form-control form-control-sm bg-light" value="@ViewBag.MobileNum" readonly />
+            </div>
             <div class="mb-3">
                 <label class="form-label fw-bold small text-secondary">Enter 6-Digit OTP Auth Code</label>
                 <input type="text" name="otpCode" class="form-control text-center fw-bold letter-spacing" maxlength="6" required />

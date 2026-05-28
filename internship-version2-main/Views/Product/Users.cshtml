@@ -1,7 +1,8 @@
 @model IEnumerable<Dictionary<string, object>>
 @{
     ViewData["Title"] = "User Control Panel";
-    var dynamicBrandsList = ViewBag.AvailableBrandsList as List<string> ?? new List<string> { "ALL" };
+    // Read the dictionary parameter containing live database product counts
+    var brandCountsDictionary = ViewBag.AvailableBrandsWithCounts as Dictionary<string, int> ?? new Dictionary<string, int> { { "ALL", 0 } };
 }
 
 <div class="container-fluid mt-3">
@@ -88,7 +89,6 @@
                                                 <div class="col-md-7 mb-2">
                                                     <div class="fw-bold text-success mb-1 border-bottom pb-1" style="font-size:0.75rem; text-transform:uppercase;">Columns & Row Actions</div>
                                                     
-                                                    <!-- ✅ UPGRADED CONTAINER: SHOW BRAND COLUMN + DYNAMIC RECORD ISOLATION DROPDOWN -->
                                                     <div class="d-flex align-items-center justify-content-between my-1 bg-white p-1 rounded border">
                                                         <div class="form-check form-switch ps-5">
                                                             <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeBrand"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
@@ -96,13 +96,15 @@
                                                             <label class="form-check-label text-muted small fw-bold">Show Brand</label>
                                                         </div>
                                                         <div class="pe-1">
-                                                            <select name="restrictedBrand" class="form-select form-select-sm border-success text-success fw-bold py-0" style="font-size:0.75rem; min-width:110px; height:24px;">
-                                                                @foreach (var brandName in dynamicBrandsList)
+                                                            <select name="restrictedBrand" class="form-select form-select-sm border-success text-success fw-bold py-0" style="font-size:0.75rem; min-width:160px; height:24px;">
+                                                                @foreach (var kvp in brandCountsDictionary)
                                                                 {
-                                                                    if (u["RestrictedBrand"].ToString() == brandName) {
-                                                                        <option value="@brandName" selected>🎯 @brandName</option>
+                                                                    string labelText = kvp.Key == "ALL" ? $"ALL ({kvp.Value} Products)" : $"{kvp.Key} ({kvp.Value} Items)";
+                                                                    
+                                                                    if (u["RestrictedBrand"].ToString() == kvp.Key) {
+                                                                        <option value="@kvp.Key" selected>🎯 @labelText</option>
                                                                     } else {
-                                                                        <option value="@brandName">@brandName</option>
+                                                                        <option value="@kvp.Key">@labelText</option>
                                                                     }
                                                                 }
                                                             </select>
@@ -130,7 +132,6 @@
     </div>
 </div>
 
-<!-- MODALS CONTAINER -->
 <div class="modal fade" id="addNewUserModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content border-0 shadow">

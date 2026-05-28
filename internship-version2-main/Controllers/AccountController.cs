@@ -4,22 +4,27 @@ using Microsoft.AspNetCore.Http;
 using System;
 using ProductHub_MVC.Data;
 using ProductHub_MVC.Models;
-using Twilio;
-using Twilio.Rest.Verify.V2.Service;
+using System.Linq;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ProductHub_MVC.Controllers
 {
     public class AccountController : Controller
     {
         private readonly SqlDbContext _context;
+        private readonly string _fast2SmsApiKey;
+        private readonly string _fast2SmsRoute;
+        private readonly HttpClient _httpClient;
 
-        private const string TwilioSid = "ACc1be5b768a18c26861224569ad87598e"; 
-        private const string TwilioToken = "YOUR_ACTUAL_AUTH_TOKEN"; 
-        private const string VerifyServiceSid = "VAf334939d515dc2ad0bbefcb882384676"; 
-
-        public AccountController(SqlDbContext context)
+        public AccountController(SqlDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _fast2SmsApiKey = configuration["Fast2Sms:ApiKey"] ?? string.Empty;
+            _fast2SmsRoute = configuration["Fast2Sms:Route"] ?? "q";
+            _httpClient = new HttpClient();
         }
 
         // Helper method to write system audit logs safely
@@ -98,69 +103,131 @@ namespace ProductHub_MVC.Controllers
         public IActionResult ForgotPassword() => View();
 
         [HttpPost]
-        public IActionResult SendOtpCode(string mobileNumber)
+        public async Task<IActionResult> SendOtpCode(string username, string mobileNumber)
         {
-            if (string.IsNullOrEmpty(mobileNumber)) return RedirectToAction(nameof(ForgotPassword));
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(mobileNumber))
+            {
+                TempData["Error"] = "❌ Please enter username and registered mobile number.";
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            string normalizedUser = username.Trim();
+            string normalizedMobile = mobileNumber.Trim();
+            string mobileDigits = new string(normalizedMobile.Where(char.IsDigit).ToArray());
+            if (mobileDigits.Length > 10) mobileDigits = mobileDigits.Substring(mobileDigits.Length - 10);
+
+            if (string.IsNullOrWhiteSpace(_fast2SmsApiKey))
+            {
+                TempData["Error"] = "❌ OTP service is not configured. Please set Fast2SMS API key in appsettings.";
+                return RedirectToAction(nameof(ForgotPassword));
+            }
 
             using (var conn = _context.CreateConnection()) {
-                string checkUser = "SELECT F_USERNAME FROM T_USERS WHERE F_MOBILE_NUMBER = @Num";
+                string checkUser = "SELECT F_USERNAME FROM T_USERS WHERE F_USERNAME = @User AND F_MOBILE_NUMBER = @Num";
                 string targetUser = "UNKNOWN_USER";
                 using (var checkCmd = new SqlCommand(checkUser, (SqlConnection)conn)) {
-                    checkCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
+                    checkCmd.Parameters.AddWithValue("@User", normalizedUser);
+                    checkCmd.Parameters.AddWithValue("@Num", mobileDigits);
                     conn.Open();
                     var res = checkCmd.ExecuteScalar();
                     if (res == null) {
-                        TempData["Error"] = "❌ Mobile number not found in active records.";
+                        TempData["Error"] = "❌ Username and mobile number do not match our records.";
                         return RedirectToAction(nameof(ForgotPassword));
                     }
                     targetUser = res.ToString() ?? "UNKNOWN_USER";
                 }
 
-                string fallbackOtp = new Random().Next(111111, 999999).ToString();
+                string generatedOtp = new Random().Next(100000, 999999).ToString();
                 DateTime expiry = DateTime.Now.AddMinutes(5);
 
-                string logOtp = "INSERT INTO T_OTP_LOG (F_MOBILE_NUMBER, F_OTP_CODE, F_EXPIRY_TIME) VALUES (@Num, @Otp, @Exp)";
-                using (var insertCmd = new SqlCommand(logOtp, (SqlConnection)conn)) {
-                    insertCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
-                    insertCmd.Parameters.AddWithValue("@Otp", fallbackOtp);
-                    insertCmd.Parameters.AddWithValue("@Exp", expiry);
-                    insertCmd.ExecuteNonQuery();
-                }
+                try
+                {
+                    string deleteOldOtp = "DELETE FROM T_OTP_LOG WHERE F_MOBILE_NUMBER = @Num";
+                    using (var deleteCmd = new SqlCommand(deleteOldOtp, (SqlConnection)conn))
+                    {
+                        deleteCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                        deleteCmd.ExecuteNonQuery();
+                    }
 
-                try {
-                    TwilioClient.Init(TwilioSid, TwilioToken);
-                    string formattedPhone = mobileNumber.Trim();
-                    if (!formattedPhone.StartsWith("+")) formattedPhone = "+91" + formattedPhone;
-                    VerificationResource.Create(to: formattedPhone, channel: "sms", pathServiceSid: VerifyServiceSid);
-                    TempData["Success"] = "✉️ Security verification transmission dispatched to hardware layers.";
+                    string saveOtp = "INSERT INTO T_OTP_LOG (F_MOBILE_NUMBER, F_OTP_CODE, F_EXPIRY_TIME, F_IS_VERIFIED) VALUES (@Num, @Otp, @Exp, 0)";
+                    using (var saveCmd = new SqlCommand(saveOtp, (SqlConnection)conn))
+                    {
+                        saveCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                        saveCmd.Parameters.AddWithValue("@Otp", generatedOtp);
+                        saveCmd.Parameters.AddWithValue("@Exp", expiry);
+                        saveCmd.ExecuteNonQuery();
+                    }
+
+                    var sendRequest = new HttpRequestMessage(HttpMethod.Post, "https://www.fast2sms.com/dev/bulkV2");
+                    sendRequest.Headers.Add("authorization", _fast2SmsApiKey);
+                    sendRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                    {
+                        { "route", _fast2SmsRoute },
+                        { "message", $"Your ProductHub OTP is {generatedOtp}. Valid for 5 minutes." },
+                        { "language", "english" },
+                        { "flash", "0" },
+                        { "numbers", mobileDigits }
+                    });
+
+                    var response = await _httpClient.SendAsync(sendRequest);
+                    string apiOutput = await response.Content.ReadAsStringAsync();
+                    if (!response.IsSuccessStatusCode || apiOutput.Contains("\"return\":false", StringComparison.OrdinalIgnoreCase))
+                    {
+                        TempData["Error"] = $"❌ Fast2SMS OTP send failed: {apiOutput}";
+                        return RedirectToAction(nameof(ForgotPassword));
+                    }
+
+                    TempData["Success"] = "✉️ OTP sent successfully to your mobile number.";
                 }
-                catch (Exception) {
-                    TempData["InfoMessage"] = "📡 Secure OTP transmission initialized over telecom routing matrices. Verify input tokens below.";
+                catch (Exception ex) {
+                    TempData["Error"] = $"❌ SMS delivery failed: {ex.Message}";
+                    return RedirectToAction(nameof(ForgotPassword));
                 }
 
                 // ✅ LOG ACTION: Track password update initialization
-                LogActivity(targetUser, "OTP_REQUEST", $"Triggered an account authentication credential recovery code for mobile index: {mobileNumber}.");
+                LogActivity(targetUser, "OTP_REQUEST", $"Triggered an account authentication credential recovery code for mobile index: {mobileDigits}.");
 
-                ViewBag.MobileNum = mobileNumber.Trim();
+                ViewBag.MobileNum = mobileDigits;
+                ViewBag.Username = normalizedUser;
                 return View("VerifyOtp");
             }
         }
 
         [HttpPost]
-        public IActionResult ResetPasswordWithOtp(string mobileNumber, string otpCode, string newPassword)
+        public async Task<IActionResult> ResetPasswordWithOtp(string username, string mobileNumber, string otpCode, string newPassword)
         {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(mobileNumber) || string.IsNullOrWhiteSpace(otpCode) || string.IsNullOrWhiteSpace(newPassword))
+            {
+                TempData["Error"] = "❌ All fields are required to reset password.";
+                ViewBag.MobileNum = mobileNumber;
+                ViewBag.Username = username;
+                return View("VerifyOtp");
+            }
+
+            string normalizedUser = username.Trim();
+            string normalizedMobile = mobileNumber.Trim();
+            string mobileDigits = new string(normalizedMobile.Where(char.IsDigit).ToArray());
+            if (mobileDigits.Length > 10) mobileDigits = mobileDigits.Substring(mobileDigits.Length - 10);
+
             string inputKey = otpCode.Trim();
-            string formattedPhone = mobileNumber.Trim();
-            if (!formattedPhone.StartsWith("+")) formattedPhone = "+91" + formattedPhone;
 
             using (var conn = _context.CreateConnection()) 
             {
                 conn.Open();
-                string lookupUserQuery = "SELECT F_USERNAME FROM T_USERS WHERE F_MOBILE_NUMBER = @Num";
+                string lookupUserQuery = "SELECT F_USERNAME FROM T_USERS WHERE F_USERNAME = @User AND F_MOBILE_NUMBER = @Num";
                 string targetUser = "UNKNOWN_USER";
                 using (var lookupCmd = new SqlCommand(lookupUserQuery, (SqlConnection)conn)) {
-                    lookupCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
+                    lookupCmd.Parameters.AddWithValue("@User", normalizedUser);
+                    lookupCmd.Parameters.AddWithValue("@Num", mobileDigits);
                     targetUser = lookupCmd.ExecuteScalar()?.ToString() ?? "UNKNOWN_USER";
+                }
+
+                if (targetUser == "UNKNOWN_USER")
+                {
+                    TempData["Error"] = "❌ Username and mobile number do not match our records.";
+                    ViewBag.MobileNum = mobileDigits;
+                    ViewBag.Username = normalizedUser;
+                    return View("VerifyOtp");
                 }
 
                 bool isApproved = false;
@@ -168,7 +235,7 @@ namespace ProductHub_MVC.Controllers
                 // 1. Check backup codes
                 string backupQuery = "SELECT COUNT(1) FROM T_USERS WHERE F_MOBILE_NUMBER = @Num AND F_BACKUP_CODE = @Key";
                 using (var backupCmd = new SqlCommand(backupQuery, (SqlConnection)conn)) {
-                    backupCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
+                    backupCmd.Parameters.AddWithValue("@Num", mobileDigits);
                     backupCmd.Parameters.AddWithValue("@Key", inputKey);
                     if ((int)backupCmd.ExecuteScalar() > 0) {
                         isApproved = true;
@@ -176,37 +243,57 @@ namespace ProductHub_MVC.Controllers
                     }
                 }
 
-                // 2. Fallback check local SQL tables validation metrics
+                // 2. Verify OTP from local OTP table (sent via SMS provider)
                 if (!isApproved) {
-                    string verifyQuery = "SELECT COUNT(1) FROM T_OTP_LOG WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp AND F_EXPIRY_TIME>=GETDATE() AND F_IS_VERIFIED=0";
-                    using (var cmd = new SqlCommand(verifyQuery, (SqlConnection)conn)) {
-                        cmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
-                        cmd.Parameters.AddWithValue("@Otp", inputKey);
-                        if ((int)cmd.ExecuteScalar() > 0) {
-                            isApproved = true;
-                            string burnOtp = "UPDATE T_OTP_LOG SET F_IS_VERIFIED=1 WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp";
-                            using (var burnCmd = new SqlCommand(burnOtp, (SqlConnection)conn)) {
-                                burnCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
-                                burnCmd.Parameters.AddWithValue("@Otp", inputKey);
-                                burnCmd.ExecuteNonQuery();
+                    try
+                    {
+                        string verifyQuery = @"SELECT COUNT(1) FROM T_OTP_LOG
+                                               WHERE F_MOBILE_NUMBER=@Num
+                                               AND F_OTP_CODE=@Otp
+                                               AND F_EXPIRY_TIME>=GETDATE()
+                                               AND F_IS_VERIFIED=0";
+                        using (var verifyCmd = new SqlCommand(verifyQuery, (SqlConnection)conn))
+                        {
+                            verifyCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                            verifyCmd.Parameters.AddWithValue("@Otp", inputKey);
+                            if ((int)verifyCmd.ExecuteScalar() > 0)
+                            {
+                                isApproved = true;
+                                string markUsedQuery = "UPDATE T_OTP_LOG SET F_IS_VERIFIED=1 WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp";
+                                using (var usedCmd = new SqlCommand(markUsedQuery, (SqlConnection)conn))
+                                {
+                                    usedCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                                    usedCmd.Parameters.AddWithValue("@Otp", inputKey);
+                                    usedCmd.ExecuteNonQuery();
+                                }
+                                LogActivity(targetUser, "PASSWORD_RESET", "Verified SMS OTP and approved password reset.");
                             }
-                            LogActivity(targetUser, "PASSWORD_RESET", "Verified temporary security recovery code token matching index safely via local data logging loops.");
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        TempData["Error"] = $"❌ OTP verification failed: {ex.Message}";
+                        ViewBag.MobileNum = mobileDigits;
+                        ViewBag.Username = normalizedUser;
+                        return View("VerifyOtp");
                     }
                 }
 
                 if (isApproved) {
-                    string updatePass = "UPDATE T_USERS SET F_PASSWORD = @Pass WHERE F_MOBILE_NUMBER = @Num";
+                    string updatePass = "UPDATE T_USERS SET F_PASSWORD = @Pass WHERE F_USERNAME = @User AND F_MOBILE_NUMBER = @Num";
                     using (var passCmd = new SqlCommand(updatePass, (SqlConnection)conn)) {
                         passCmd.Parameters.AddWithValue("@Pass", newPassword.Trim());
-                        passCmd.Parameters.AddWithValue("@Num", mobileNumber.Trim());
+                        passCmd.Parameters.AddWithValue("@User", normalizedUser);
+                        passCmd.Parameters.AddWithValue("@Num", mobileDigits);
                         passCmd.ExecuteNonQuery();
                     }
+                    TempData["Success"] = "✅ Password reset successful. Please login with your new password.";
                     return RedirectToAction(nameof(Login));
                 }
 
-                TempData["Error"] = "❌ Invalid verification code entry or incorrect fallback authorization token.";
-                ViewBag.MobileNum = mobileNumber;
+                TempData["Error"] = "❌ Invalid OTP code. Please try again.";
+                ViewBag.MobileNum = mobileDigits;
+                ViewBag.Username = normalizedUser;
                 return View("VerifyOtp");
             }
         }
