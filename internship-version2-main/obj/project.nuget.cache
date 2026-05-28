@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ijehl6XhE0I=",
+  "dgSpecHash": "onw6RFT1S8A=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
+  "projectFilePath": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\bouncycastle.cryptography\\2.6.2\\bouncycastle.cryptography.2.6.2.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\epplus\\8.5.4\\epplus.8.5.4.nupkg.sha512",
@@ -30,7 +30,8 @@
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\system.configuration.configurationmanager\\9.0.13\\system.configuration.configurationmanager.9.0.13.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\system.identitymodel.tokens.jwt\\8.16.0\\system.identitymodel.tokens.jwt.8.16.0.nupkg.sha512",
     "C:\\Users\\Aspl-Training\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.7\\system.security.cryptography.pkcs.10.0.7.nupkg.sha512",
-    "C:\\Users\\Aspl-Training\\.nuget\\packages\\system.security.cryptography.protecteddata\\9.0.13\\system.security.cryptography.protecteddata.9.0.13.nupkg.sha512"
+    "C:\\Users\\Aspl-Training\\.nuget\\packages\\system.security.cryptography.protecteddata\\9.0.13\\system.security.cryptography.protecteddata.9.0.13.nupkg.sha512",
+    "C:\\Users\\Aspl-Training\\.nuget\\packages\\twilio\\7.14.9\\twilio.7.14.9.nupkg.sha512"
   ],
   "logs": []
 }

@@ -467,6 +467,24 @@
         "build": {
           "buildTransitive/net8.0/_._": {}
         }
+      },
+      "Twilio/7.14.9": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.IdentityModel.Tokens": "8.3.1",
+          "Newtonsoft.Json": "13.0.1",
+          "System.IdentityModel.Tokens.Jwt": "8.3.1"
+        },
+        "compile": {
+          "lib/net6.0/Twilio.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/Twilio.dll": {
+            "related": ".xml"
+          }
+        }
       }
     }
   },
@@ -1255,6 +1273,26 @@
         "system.security.cryptography.protecteddata.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "Twilio/7.14.9": {
+      "sha512": "dYFgEoNofKasj2cpYddZT7yVkBexkQz4eTlQ4c72BO2H1H8UbTGGl9Aa7NIFBUuTcdNWOYwIZlHjmitlRng28g==",
+      "type": "package",
+      "path": "twilio/7.14.9",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "lib/net35/Twilio.dll",
+        "lib/net35/Twilio.xml",
+        "lib/net462/Twilio.dll",
+        "lib/net462/Twilio.xml",
+        "lib/net6.0/Twilio.dll",
+        "lib/net6.0/Twilio.xml",
+        "lib/netstandard2.1/Twilio.dll",
+        "lib/netstandard2.1/Twilio.xml",
+        "twilio.7.14.9.nupkg.sha512",
+        "twilio.nuspec"
+      ]
     }
   },
   "projectFileDependencyGroups": {
@@ -1263,7 +1301,8 @@
       "MailKit >= 4.16.0",
       "Mailtrap >= 1.1.0",
       "Microsoft.Data.SqlClient >= 7.0.1",
-      "SendGrid >= 9.29.3"
+      "SendGrid >= 9.29.3",
+      "Twilio >= 7.14.9"
     ]
   },
   "packageFolders": {
@@ -1337,6 +1376,10 @@
           "SendGrid": {
             "target": "Package",
             "version": "[9.29.3, )"
+          },
+          "Twilio": {
+            "target": "Package",
+            "version": "[7.14.9, )"
           }
         },
         "imports": [

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {}
+    "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {
+    "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
+        "projectUniqueName": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
         "projectName": "ProductHub_MVC",
-        "projectPath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
+        "projectPath": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\ProductHub_MVC.csproj",
         "packagesPath": "C:\\Users\\Aspl-Training\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\obj\\",
+        "outputPath": "c:\\Users\\Aspl-Training\\Downloads\\internship-version2-main\\internship-version2-main\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -71,6 +71,10 @@
             "SendGrid": {
               "target": "Package",
               "version": "[9.29.3, )"
+            },
+            "Twilio": {
+              "target": "Package",
+              "version": "[7.14.9, )"
             }
           },
           "imports": [
