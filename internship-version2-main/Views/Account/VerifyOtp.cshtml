@@ -82,7 +82,7 @@
         <div class="text-center mb-4">
             <i class="fa-solid fa-envelope-open-text text-primary mb-3" style="font-size: 2.8rem;"></i>
             <h1 class="otp-title">Verify OTP</h1>
-            <p class="text-muted small">Enter the code dispatched to recover your account</p>
+            <p class="text-muted small">Enter the OTP sent to your mobile to reset password.</p>
         </div>
 
         @if (TempData["Success"] != null) { 
@@ -112,16 +112,16 @@
             </div>
 
             <div>
-                <label class="form-label fw-semibold text-secondary small text-center d-block">6-Digit OTP Auth Code</label>
+                <label class="form-label fw-semibold text-secondary small text-center d-block">6-Digit OTP</label>
                 <input type="text" name="otpCode" class="form-control text-center fw-bold letter-spacing" maxlength="6" required placeholder="000000" autocomplete="off" />
             </div>
 
             <div>
-                <label class="form-label fw-semibold text-secondary small">Establish New Password</label>
+                <label class="form-label fw-semibold text-secondary small">New Password</label>
                 <input type="password" name="newPassword" class="form-control" placeholder="Type new password..." required />
             </div>
 
-            <button type="submit" class="btn btn-saas-primary mt-2">Commit Password Reset</button>
+            <button type="submit" class="btn btn-saas-primary mt-2">Reset Password</button>
         </form>
     </div>
 </body>

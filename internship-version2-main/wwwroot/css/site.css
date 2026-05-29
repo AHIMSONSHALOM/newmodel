@@ -1,14 +1,14 @@
 :root {
-  --primary-color: #198754;
-  --secondary-color: #212529;
-  --success-color: #198754;
-  --danger-color: #DC2626;
-  --warning-color: #F59E0B;
-  --bg-color: #F8F9FA;
+  --primary-color: #16A34A; /* Vibrant Green */
+  --primary-hover: #15803D; /* Slightly darker green */
+  --secondary-color: #1E293B; /* Slate Gray */
+  --success-color: #10B981;
+  --danger-color: #EF4444;
+  --bg-color: #F8FAFC;
   --card-bg: #FFFFFF;
-  --border-color: #DEE2E6;
-  --text-primary: #212529;
-  --text-secondary: #495057;
+  --border-color: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
 }
 
 body {
@@ -17,79 +17,87 @@ body {
   color: var(--text-primary);
   margin-bottom: 60px;
   font-size: 14px;
+  font-weight: 500;
 }
 
 /* Typography */
 h1, .page-title {
   font-size: 28px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--secondary-color);
 }
 
-/* Clean Student Card Design */
+/* Clean Refined Card */
 .saas-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  margin-bottom: 24px;
 }
 
-/* Neat Clean Buttons */
+/* Vibrant Button Styles */
 .btn-saas-primary {
   background-color: var(--primary-color) !important;
   color: #FFFFFF !important;
   border: 1px solid var(--primary-color) !important;
-  border-radius: 6px !important;
-  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  transition: background-color 0.15s ease-in-out !important;
-  font-size: 13.5px !important;
+  gap: 8px !important;
+  transition: all 0.15s ease !important;
+  font-size: 14px !important;
 }
 .btn-saas-primary:hover {
-  background-color: #146c43 !important;
-  border-color: #146c43 !important;
+  background-color: var(--primary-hover) !important;
+  border-color: var(--primary-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.15);
 }
 
 .btn-saas-secondary {
-  background-color: #FFFFFF !important;
-  color: #495057 !important;
-  border: 1px solid #CED4DA !important;
-  border-radius: 6px !important;
-  padding: 8px 16px !important;
+  background-color: #E8F5E9 !important;
+  color: #1B5E20 !important;
+  border: 1px solid #C8E6C9 !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  transition: background-color 0.15s ease-in-out !important;
-  font-size: 13.5px !important;
+  gap: 8px !important;
+  transition: all 0.15s ease !important;
+  font-size: 14px !important;
 }
 .btn-saas-secondary:hover {
-  background-color: #F8F9FA !important;
+  background-color: #C8E6C9 !important;
+  border-color: #A5D6A7 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.1);
 }
 
 .btn-saas-danger {
   background-color: #FEF2F2 !important;
   color: #DC2626 !important;
   border: 1px solid #FEE2E2 !important;
-  border-radius: 6px !important;
-  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  padding: 10px 20px !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  transition: background-color 0.15s ease-in-out !important;
-  font-size: 13.5px !important;
+  gap: 8px !important;
+  transition: all 0.15s ease !important;
+  font-size: 14px !important;
 }
 .btn-saas-danger:hover {
   background-color: #FEE2E2 !important;
+  transform: translateY(-1px);
 }
 
-/* Neat Bordered Tables */
+/* Polished Table Design */
 .saas-table {
   width: 100%;
   margin-bottom: 0px;
@@ -98,19 +106,19 @@ h1, .page-title {
   border: 1px solid var(--border-color);
 }
 .saas-table thead {
-  background-color: #F1F5F9;
+  background-color: #F8FAFC;
 }
 .saas-table th {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
-  padding: 12px;
+  padding: 14px;
   text-align: left;
   border-bottom: 2px solid var(--border-color);
   border-right: 1px solid var(--border-color);
 }
 .saas-table td {
-  padding: 12px;
+  padding: 14px;
   vertical-align: middle;
   border-bottom: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
@@ -119,7 +127,7 @@ h1, .page-title {
   transition: background-color 0.15s ease;
 }
 .saas-table tbody tr:hover td {
-  background-color: #F8F9FA;
+  background-color: #F8FAFC;
 }
 
 /* Brand badges */
@@ -127,8 +135,8 @@ h1, .page-title {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px 10px;
-  font-size: 0.72rem;
+  padding: 4px 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   border-radius: 999px;
   text-transform: uppercase;
@@ -136,15 +144,15 @@ h1, .page-title {
 }
 .brand-badge-apple {
   background-color: #E8F5E9 !important;
-  color: #2E7D32 !important;
+  color: #16A34A !important;
 }
 .brand-badge-samsung {
   background-color: #E8F5E9 !important;
-  color: #2E7D32 !important;
+  color: #16A34A !important;
 }
 .brand-badge-google {
   background-color: #FFF3E0 !important;
-  color: #EF6C00 !important;
+  color: #D97706 !important;
 }
 .brand-badge-default {
   background-color: #F1F5F9 !important;
@@ -155,36 +163,36 @@ h1, .page-title {
 .rating-stars {
   color: #F59E0B;
   font-weight: bold;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 /* Sidebar filter */
 .saas-sidebar {
   background: #FFFFFF;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 .saas-sidebar-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--secondary-color);
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   border-bottom: 2px solid var(--primary-color);
-  padding-bottom: 6px;
+  padding-bottom: 8px;
 }
 
-/* Clean Header Navbar */
+/* Navigation Header */
 .saas-navbar {
   height: 70px;
   background-color: #FFFFFF !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border-bottom: 1px solid var(--border-color);
-  padding: 0 20px;
+  padding: 0 24px;
 }
 .saas-nav-brand {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--primary-color) !important;
 }
@@ -216,12 +224,12 @@ h1, .page-title {
   border-radius: 3px 3px 0 0;
 }
 
-/* Modern Toggle Switch Cards */
+/* Toggle switch card */
 .saas-toggle-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -230,33 +238,33 @@ h1, .page-title {
 }
 .saas-toggle-card:hover {
   border-color: var(--primary-color);
-  background-color: #F8F9FA;
+  background-color: #F8FAFC;
 }
 
 .saas-grid-gap {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* Clean Form Elements */
+/* Polished Form Elements */
 .form-control {
-  border: 1px solid #CED4DA !important;
-  border-radius: 6px !important;
-  padding: 8px 12px !important;
-  font-size: 13.5px !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   color: var(--text-primary) !important;
   background-color: #FFFFFF !important;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+  transition: all 0.15s ease-in-out !important;
 }
 .form-control:focus {
-  border-color: #86b7fe !important;
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15) !important;
   outline: 0 !important;
 }
 
-/* Standard Switches with Green Accents */
+/* Custom Standard Switches */
 .form-check.form-switch {
   padding-left: 0 !important;
   margin: 0 !important;
@@ -268,13 +276,13 @@ h1, .page-title {
 .form-check.form-switch .form-check-input {
   float: none !important;
   margin-left: 0 !important;
-  width: 2.6em !important;
-  height: 1.4em !important;
+  width: 2.8em !important;
+  height: 1.5em !important;
   cursor: pointer !important;
   background-color: #E2E8F0 !important;
   border-color: #CBD5E1 !important;
   border-radius: 2em !important;
-  transition: background-position 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out !important;
+  transition: all 0.15s ease-in-out !important;
 }
 .form-check.form-switch .form-check-input:checked {
   background-color: var(--primary-color) !important;

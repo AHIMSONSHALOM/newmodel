@@ -1,6 +1,6 @@
 @model IEnumerable<ProductHub_MVC.Models.Product>
 @{
-    ViewData["Title"] = "Product Comparison Dashboard Matrix";
+    ViewData["Title"] = "Compare Products";
 }
 
 @functions {
@@ -19,12 +19,12 @@
     <!-- Title & Navigation Bar -->
     <div class="saas-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h1 class="page-title mb-1">Product Comparison Matrix</h1>
-            <p class="text-secondary m-0" style="font-size: 0.9rem;">Side-by-side parameters review for @Model.Count() selected items</p>
+            <h1 class="page-title mb-1">Product Comparison</h1>
+            <p class="text-secondary m-0" style="font-size: 0.9rem;">Side-by-side parameters comparison for @Model.Count() selected items.</p>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-saas-primary" data-bs-toggle="modal" data-bs-target="#dispatchCompareEmailModal">
-                <i class="fa-solid fa-envelope me-1"></i> Email This Comparison
+                <i class="fa-solid fa-envelope me-1"></i> Email Comparison
             </button>
             <a asp-action="Index" class="btn btn-saas-secondary">
                 <i class="fa-solid fa-arrow-left me-1"></i> Back to Dashboard
@@ -38,7 +38,7 @@
             <table class="saas-table mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-start p-3 fw-bold align-middle" style="width: 220px; min-width: 180px; font-size: 15px; color: var(--text-secondary);">Specification Metrics</th>
+                        <th class="text-start p-3 fw-bold align-middle" style="width: 220px; min-width: 180px; font-size: 14px; color: var(--text-secondary);">Metrics</th>
                         @foreach (var prod in Model)
                         {
                             <th class="p-3 align-middle" style="min-width: 200px; text-align: center;">
@@ -57,14 +57,14 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="text-start fw-bold text-secondary p-3">Market Valuation Price</td>
+                        <td class="text-start fw-bold text-secondary p-3">Price</td>
                         @foreach (var prod in Model)
                         {
                             <td class="text-success fw-bold p-3" style="font-size: 1.15rem;">Rs. @prod.Price.ToString("N2")</td>
                         }
                     </tr>
                     <tr>
-                        <td class="text-start fw-bold text-secondary p-3">Star Satisfaction Rating</td>
+                        <td class="text-start fw-bold text-secondary p-3">Star Rating</td>
                         @foreach (var prod in Model)
                         {
                             <td class="p-3 fw-semibold text-dark">
@@ -74,14 +74,14 @@
                         }
                     </tr>
                     <tr>
-                        <td class="text-start fw-bold text-secondary p-3">Available Inventory Stock</td>
+                        <td class="text-start fw-bold text-secondary p-3">Quantity</td>
                         @foreach (var prod in Model)
                         {
                             <td class="p-3 text-secondary fw-semibold">@prod.Quantity Units</td>
                         }
                     </tr>
                     <tr>
-                        <td class="text-start fw-bold text-secondary p-3">Descriptive Context Features</td>
+                        <td class="text-start fw-bold text-secondary p-3">Description</td>
                         @foreach (var prod in Model)
                         {
                             <td class="text-start text-muted p-3 align-top" style="font-size: 0.88rem; line-height: 1.5; font-weight: 500;">
@@ -98,7 +98,7 @@
 <!-- Compared Mailing Modal -->
 <div class="modal fade" id="dispatchCompareEmailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow" style="border-radius: 16px; overflow: hidden;">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px; overflow: hidden;">
             <form asp-action="EmailZipData" method="post">
                 @foreach (var prod in Model)
                 {
@@ -113,7 +113,7 @@
                         <label class="form-label fw-bold text-dark">Recipient Email Address</label>
                         <input type="email" name="recipientEmail" class="form-control" placeholder="recipient@gmail.com" required />
                         <div class="form-text text-muted mt-2" style="font-size: 0.78rem;">
-                            The background system will compress only these @Model.Count() reviewed rows into a timestamped ZIP spreadsheet archive.
+                            The system will compress these @Model.Count() rows into a ZIP spreadsheet archive.
                         </div>
                     </div>
                 </div>

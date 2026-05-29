@@ -1,55 +1,55 @@
 @model ProductHub_MVC.Models.Product
 
 @{
-    ViewData["Title"] = (Model == null || Model.ProductId == 0) ? "Add Catalog Product" : "Modify Product Data";
+    ViewData["Title"] = (Model == null || Model.ProductId == 0) ? "Add Product" : "Edit Product";
 }
 
 <div class="container my-5">
     <div class="row justify-content-center">
         <div class="col-md-7">
-            <div class="card shadow border-0">
-                <div class="card-header @((Model == null || Model.ProductId == 0) ? "bg-success" : "bg-primary") text-white py-3">
-                    <h4 class="card-title mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>@ViewData["Title"]</h4>
+            <div class="saas-card p-0 overflow-hidden border-0 shadow">
+                <div class="py-3 px-4 text-white" style="background-color: var(--primary-color);">
+                    <h4 class="mb-0 fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>@ViewData["Title"]</h4>
                 </div>
-                <div class="card-body p-4">
+                <div class="p-4 bg-white">
                     <form asp-action="AddProduct" method="post">
                         <input type="hidden" asp-for="ProductId" />
 
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">Product Name</label>
-                            <input asp-for="ProductName" class="form-control" placeholder="Enter high-performance description name" required />
+                            <label class="form-label fw-bold">Product Name</label>
+                            <input asp-for="ProductName" class="form-control" placeholder="Enter product name" required />
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">Brand Manufacturer</label>
-                            <input asp-for="Brand" class="form-control" placeholder="e.g. Apple, Sony, Logitech" required />
+                            <label class="form-label fw-bold">Brand</label>
+                            <input asp-for="Brand" class="form-control" placeholder="e.g. Apple, Samsung, Google" required />
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold">Quantity Level</label>
-                                <input asp-for="Quantity" class="form-control" placeholder="e.g. 45 Units" required />
+                                <label class="form-label fw-bold">Quantity</label>
+                                <input asp-for="Quantity" class="form-control" placeholder="e.g. 45" required />
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold">Price Point (Rs.)</label>
+                                <label class="form-label fw-bold">Price (Rs.)</label>
                                 <input asp-for="Price" type="number" step="0.01" class="form-control" placeholder="0.00" required />
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">Product Rating (0.0 - 5.0 Stars)</label>
+                            <label class="form-label fw-bold">Rating (0.0 - 5.0)</label>
                             <input asp-for="ProductRating" type="number" step="0.1" min="0" max="5" class="form-control" placeholder="4.5" required />
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">Detailed Descriptive Overview</label>
-                            <textarea asp-for="ProductDescription" class="form-control" rows="4" placeholder="Append technical feature details..."></textarea>
+                            <label class="form-label fw-bold">Description</label>
+                            <textarea asp-for="ProductDescription" class="form-control" rows="4" placeholder="Enter description..."></textarea>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <a asp-action="Index" class="btn btn-outline-secondary px-4">Cancel</a>
-                            <button type="submit" class="btn @((Model == null || Model.ProductId == 0) ? "btn-success" : "btn-primary") px-4">
-                                Save Catalog Entry
+                            <a asp-action="Index" class="btn btn-saas-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-saas-primary">
+                                Save Product
                             </button>
                         </div>
                     </form>

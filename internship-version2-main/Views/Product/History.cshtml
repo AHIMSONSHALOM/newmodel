@@ -1,18 +1,18 @@
 @model IEnumerable<Dictionary<string, object>>
 @{
-    ViewData["Title"] = "System Audit Logs Portfolio";
+    ViewData["Title"] = "Audit Logs";
 }
 
 <div class="container-fluid mt-1 saas-grid-gap">
     <!-- Top Action Bar -->
     <div class="saas-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h1 class="page-title mb-1"><i class="fa-solid fa-clock-history text-primary me-2"></i>System Operations History</h1>
+            <h1 class="page-title mb-1"><i class="fa-solid fa-clock-history text-primary me-2"></i>System Audit Logs</h1>
             <p class="text-secondary m-0" style="font-size: 0.9rem;">
                 @if (!string.IsNullOrEmpty(ViewBag.SelectedFilterUser)) {
-                    <span>Operational history records logs for user profile: <strong>@ViewBag.SelectedFilterUser</strong></span>
+                    <span>Showing activity logs for user: <strong>@ViewBag.SelectedFilterUser</strong></span>
                 } else {
-                    <span>Global system transaction footprints log metrics across user frameworks</span>
+                    <span>View all system operations and user activity logs in real-time.</span>
                 }
             </p>
         </div>
@@ -32,18 +32,18 @@
                 <thead>
                     <tr>
                         <th style="width: 100px; text-align: center;">Log ID</th>
-                        <th style="width: 180px; text-align: center;">Account User</th>
-                        <th style="width: 180px; text-align: center;">Operation Action</th>
-                        <th class="text-start">Activity Execution Specifications Trace Description</th>
-                        <th style="width: 220px; text-align: center;">Timeline Timestamp Log</th>
+                        <th style="width: 180px; text-align: center;">User</th>
+                        <th style="width: 180px; text-align: center;">Action</th>
+                        <th class="text-start">Description</th>
+                        <th style="width: 220px; text-align: center;">Timestamp</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (!Model.Any()) {
                         <tr>
-                            <td colspan="5" class="text-center py-5 text-muted font-monospace">
+                            <td colspan="5" class="text-center py-5 text-muted">
                                 <i class="fa-solid fa-triangle-exclamation text-warning fs-3 mb-2 d-block"></i>
-                                <span>No tracked security operations logs match current criteria context parameters.</span>
+                                <span>No activity logs found matching the current filters.</span>
                             </td>
                         </tr>
                     }
@@ -51,9 +51,9 @@
                     {
                         string badgeStyle = "background-color: #E2E8F0; color: #475569;";
                         string logAction = log["Action"]?.ToString() ?? "LOG";
-                        if (logAction == "LOGIN") badgeStyle = "background-color: #EEF2FF; color: #4338CA;";
-                        else if (logAction == "ADD_ROW") badgeStyle = "background-color: #ECFDF5; color: #047857;";
-                        else if (logAction == "EDIT") badgeStyle = "background-color: #FFFBEB; color: #D97706;";
+                        if (logAction == "LOGIN") badgeStyle = "background-color: #E8F5E9; color: #16A34A;";
+                        else if (logAction == "ADD_ROW") badgeStyle = "background-color: #E8F5E9; color: #16A34A;";
+                        else if (logAction == "EDIT") badgeStyle = "background-color: #FFF3E0; color: #D97706;";
                         else if (logAction == "DELETE") badgeStyle = "background-color: #FEF2F2; color: #DC2626;";
                         else if (logAction == "PERMISSIONS") badgeStyle = "background-color: #FDF2F8; color: #BE185D;";
                         else if (logAction.Contains("PASSWORD")) badgeStyle = "background-color: #F1F5F9; color: #0F172A;";
