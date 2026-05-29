@@ -272,51 +272,38 @@ namespace ProductHub_MVC.Controllers
 
                 bool isApproved = false;
 
-                // 1. Check backup codes
-                string backupQuery = "SELECT COUNT(1) FROM T_USERS WHERE F_MOBILE_NUMBER = @Num AND F_BACKUP_CODE = @Key";
-                using (var backupCmd = new SqlCommand(backupQuery, (SqlConnection)conn)) {
-                    backupCmd.Parameters.AddWithValue("@Num", mobileDigits);
-                    backupCmd.Parameters.AddWithValue("@Key", inputKey);
-                    if ((int)backupCmd.ExecuteScalar() > 0) {
-                        isApproved = true;
-                        LogActivity(targetUser, "PASSWORD_BYPASS", "Bypassed standard mobile wireless carrier validation steps using a permanent 2FA single-use backup key.");
-                    }
-                }
-
-                // 2. Verify OTP from local OTP table (sent via SMS provider)
-                if (!isApproved) {
-                    try
+                // Verify OTP from local OTP table (sent via SMS / Email / UI alert)
+                try
+                {
+                    string verifyQuery = @"SELECT COUNT(1) FROM T_OTP_LOG
+                                           WHERE F_MOBILE_NUMBER=@Num
+                                           AND F_OTP_CODE=@Otp
+                                           AND F_EXPIRY_TIME>=GETDATE()
+                                           AND F_IS_VERIFIED=0";
+                    using (var verifyCmd = new SqlCommand(verifyQuery, (SqlConnection)conn))
                     {
-                        string verifyQuery = @"SELECT COUNT(1) FROM T_OTP_LOG
-                                               WHERE F_MOBILE_NUMBER=@Num
-                                               AND F_OTP_CODE=@Otp
-                                               AND F_EXPIRY_TIME>=GETDATE()
-                                               AND F_IS_VERIFIED=0";
-                        using (var verifyCmd = new SqlCommand(verifyQuery, (SqlConnection)conn))
+                        verifyCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                        verifyCmd.Parameters.AddWithValue("@Otp", inputKey);
+                        if ((int)verifyCmd.ExecuteScalar() > 0)
                         {
-                            verifyCmd.Parameters.AddWithValue("@Num", mobileDigits);
-                            verifyCmd.Parameters.AddWithValue("@Otp", inputKey);
-                            if ((int)verifyCmd.ExecuteScalar() > 0)
+                            isApproved = true;
+                            string markUsedQuery = "UPDATE T_OTP_LOG SET F_IS_VERIFIED=1 WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp";
+                            using (var usedCmd = new SqlCommand(markUsedQuery, (SqlConnection)conn))
                             {
-                                isApproved = true;
-                                string markUsedQuery = "UPDATE T_OTP_LOG SET F_IS_VERIFIED=1 WHERE F_MOBILE_NUMBER=@Num AND F_OTP_CODE=@Otp";
-                                using (var usedCmd = new SqlCommand(markUsedQuery, (SqlConnection)conn))
-                                {
-                                    usedCmd.Parameters.AddWithValue("@Num", mobileDigits);
-                                    usedCmd.Parameters.AddWithValue("@Otp", inputKey);
-                                    usedCmd.ExecuteNonQuery();
-                                }
-                                LogActivity(targetUser, "PASSWORD_RESET", "Verified SMS OTP and approved password reset.");
+                                usedCmd.Parameters.AddWithValue("@Num", mobileDigits);
+                                usedCmd.Parameters.AddWithValue("@Otp", inputKey);
+                                usedCmd.ExecuteNonQuery();
                             }
+                            LogActivity(targetUser, "PASSWORD_RESET", "Verified SMS OTP and approved password reset.");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        TempData["Error"] = $"❌ OTP verification failed: {ex.Message}";
-                        ViewBag.MobileNum = mobileDigits;
-                        ViewBag.Username = normalizedUser;
-                        return View("VerifyOtp");
-                    }
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"❌ OTP verification failed: {ex.Message}";
+                    ViewBag.MobileNum = mobileDigits;
+                    ViewBag.Username = normalizedUser;
+                    return View("VerifyOtp");
                 }
 
                 if (isApproved) {

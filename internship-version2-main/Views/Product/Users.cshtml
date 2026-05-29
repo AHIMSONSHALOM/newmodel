@@ -39,7 +39,6 @@
                             <th>Registered Mobile</th>
                             <th>Email Address</th>
                             <th>Password Key</th>
-                            <th>Backup Failsafe Code</th>
                             <th>Actions Control</th>
                             <th class="text-start p-3" style="width: 580px;">Features Access Switches Control Frame</th>
                         </tr>
@@ -59,11 +58,7 @@
                                     }
                                 </td>
                                 <td><code class="bg-light border px-2 py-1 text-danger rounded fw-bold">@u["Password"]</code></td>
-                                <td>
-                                    <span class="badge bg-light text-dark border px-2 py-1 fw-mono text-uppercase">
-                                        <i class="fa-solid fa-file-shield text-primary me-1"></i> @u["BackupCode"]
-                                    </span>
-                                </td>
+
                                 <td>
                                     @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
                                         <span class="badge bg-danger">SYSTEM ROOT ADMIN</span>
