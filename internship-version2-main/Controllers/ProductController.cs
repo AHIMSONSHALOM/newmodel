@@ -160,14 +160,9 @@ namespace ProductHub_MVC.Controllers
         {
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return RedirectToAction(nameof(Index));
 
-<<<<<<< HEAD
             // Build dropdown source for "Show Brand": ALL + each brand with record count.
             Dictionary<string, int> availableBrandsWithCounts = new Dictionary<string, int>();
             int totalProductCount = 0;
-=======
-            // ✅ FIXED: Generate unique distinct brand parameters list with proper validation
-            List<string> dynamicDistinctBrands = new List<string> { "ALL" };
->>>>>>> c97f2f17cfb8fcc7c81cdffef7442debde0f0061
             using (var connection = _context.CreateConnection()) {
                 string brandListQuery = @"
                     SELECT F_BRAND, COUNT(*) AS ProductCount
@@ -179,7 +174,6 @@ namespace ProductHub_MVC.Controllers
                     connection.Open();
                     using (var reader = cmd.ExecuteReader()) {
                         while (reader.Read()) {
-<<<<<<< HEAD
                             string brand = reader["F_BRAND"]?.ToString()?.Trim() ?? string.Empty;
                             int brandCount = Convert.ToInt32(reader["ProductCount"]);
                             if (string.IsNullOrWhiteSpace(brand)) continue;
@@ -191,18 +185,10 @@ namespace ProductHub_MVC.Controllers
                                 availableBrandsWithCounts[brand] += brandCount;
                             }
                             totalProductCount += brandCount;
-=======
-                            string brand = reader["F_BRAND"].ToString();
-                            // ✅ NEW: Check for null/whitespace and trim
-                            if (!string.IsNullOrWhiteSpace(brand)) {
-                                dynamicDistinctBrands.Add(brand.Trim());
-                            }
->>>>>>> c97f2f17cfb8fcc7c81cdffef7442debde0f0061
                         }
                     }
                 }
             }
-<<<<<<< HEAD
 
             availableBrandsWithCounts = availableBrandsWithCounts
                 .OrderBy(kvp => kvp.Key)
@@ -214,21 +200,11 @@ namespace ProductHub_MVC.Controllers
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
             ViewBag.AvailableBrandsWithCounts = availableBrandsWithCounts;
-=======
-            
-            // ✅ NEW: Debug logging to verify brands are loading
-            System.Diagnostics.Debug.WriteLine($"[BRANDS] Total Count: {dynamicDistinctBrands.Count}");
-            foreach(var b in dynamicDistinctBrands) {
-                System.Diagnostics.Debug.WriteLine($"[BRANDS] Item: '{b}'");
-            }
-            
-            ViewBag.AvailableBrandsList = dynamicDistinctBrands;
->>>>>>> c97f2f17cfb8fcc7c81cdffef7442debde0f0061
 
             List<Dictionary<string, object>> userProfiles = new List<Dictionary<string, object>>();
             using (var connection = _context.CreateConnection())
             {
-                string query = "SELECT F_USER_ID, F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_BACKUP_CODE, F_RESTRICTED_BRAND, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL, F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE FROM T_USERS";
+                string query = "SELECT F_USER_ID, F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_BACKUP_CODE, F_RESTRICTED_BRAND, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL, F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_EMAIL FROM T_USERS";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
                 {
                     connection.Open();
@@ -245,7 +221,8 @@ namespace ProductHub_MVC.Controllers
                             { "Compare", Convert.ToInt32(reader["F_CAN_COMPARE"]) }, { "Email", Convert.ToInt32(reader["F_CAN_EMAIL"]) },
                             { "SeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]) }, { "SeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]) },
                             { "SeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]) }, { "SeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]) },
-                            { "UseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]) }, { "UseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]) }
+                            { "UseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]) }, { "UseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]) },
+                            { "EmailAddress", reader["F_EMAIL"]?.ToString() ?? "" }
                         });
                     }
                 }
@@ -255,14 +232,14 @@ namespace ProductHub_MVC.Controllers
 
         [HttpPost]
         public IActionResult SaveUserConfig(int userId, string userNameParam, string restrictedBrand, int addRow, int download, int import, int export, int compare, int email,
-                                            int seeBrand, int seeQty, int seePrice, int seeRating, int useEdit, int useDelete)
+                                            int seeBrand, int seeQty, int seePrice, int seeRating, int useEdit, int useDelete, string userEmail)
         {
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
             using (var connection = _context.CreateConnection()) {
                 string query = @"UPDATE T_USERS SET 
                                 F_CAN_ADD_ROW=@Add, F_CAN_DOWNLOAD=@Dl, F_CAN_IMPORT=@Imp, F_CAN_EXPORT=@Exp, F_CAN_COMPARE=@Comp, F_CAN_EMAIL=@Em,
                                 F_CAN_SEE_BRAND=@B, F_CAN_SEE_QTY=@Q, F_CAN_SEE_PRICE=@P, F_CAN_SEE_RATING=@R, F_CAN_USE_EDIT=@E, F_CAN_USE_DELETE=@D,
-                                F_RESTRICTED_BRAND=@Restrict
+                                F_RESTRICTED_BRAND=@Restrict, F_EMAIL=@Email
                                 WHERE F_USER_ID=@Id";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection)) {
                     cmd.Parameters.AddWithValue("@Id", userId); cmd.Parameters.AddWithValue("@Add", addRow);
@@ -273,6 +250,7 @@ namespace ProductHub_MVC.Controllers
                     cmd.Parameters.AddWithValue("@P", seePrice); cmd.Parameters.AddWithValue("@R", seeRating);
                     cmd.Parameters.AddWithValue("@E", useEdit); cmd.Parameters.AddWithValue("@D", useDelete);
                     cmd.Parameters.AddWithValue("@Restrict", restrictedBrand.Trim()); 
+                    cmd.Parameters.AddWithValue("@Email", (object)userEmail?.Trim() ?? DBNull.Value);
                     connection.Open(); cmd.ExecuteNonQuery();
                 }
             }
@@ -323,7 +301,6 @@ namespace ProductHub_MVC.Controllers
         // =========================================================
         // 5. INVENTORY CRUD LOGISTICS HANDLERS
         // =========================================================
-<<<<<<< HEAD
         [HttpPost]
         public IActionResult AddProduct(Product m)
         {
@@ -383,20 +360,21 @@ namespace ProductHub_MVC.Controllers
         }
 
         [HttpPost]
-        public IActionResult AdministrativeAddUser(string username, string password, string mobile)
+        public IActionResult AdministrativeAddUser(string username, string password, string mobile, string email)
         {
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
             using (var conn = _context.CreateConnection()) {
-                string query = "INSERT INTO T_USERS (F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER) VALUES (@U, @P, @M)";
+                string query = "INSERT INTO T_USERS (F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL) VALUES (@U, @P, @M, @E)";
                 using (var cmd = new SqlCommand(query, (SqlConnection)conn)) {
                     cmd.Parameters.AddWithValue("@U", username.Trim());
                     cmd.Parameters.AddWithValue("@P", password.Trim());
                     cmd.Parameters.AddWithValue("@M", mobile.Trim());
+                    cmd.Parameters.AddWithValue("@E", (object)email?.Trim() ?? DBNull.Value);
                     conn.Open();
                     cmd.ExecuteNonQuery();
                 }
             }
-            LogActivity("USER_MANAGEMENT", $"Created brand-new login profile mapping entry row: '{username.Trim()}' linked with mobile: {mobile}");
+            LogActivity("USER_MANAGEMENT", $"Created brand-new login profile mapping entry row: '{username.Trim()}' linked with mobile: {mobile} and email: {email}");
             return RedirectToAction(nameof(Users));
         }
 
@@ -432,20 +410,10 @@ namespace ProductHub_MVC.Controllers
             LogActivity("PASSWORD_CHANGE", $"Forced password credential modification overwrite for account user: '{targetName}'.");
             return RedirectToAction(nameof(Users));
         }
-=======
-        [HttpPost] public IActionResult AddProduct(Product m) { using (var c = _context.CreateConnection()) { string q = "INSERT INTO T_PRODUCTS (F_PROD_NAME,F_BRAND,F_QTY,F_PRICE,F_PROD_RATING) VALUES (@N,@B,@Q,@P,@R)"; using (var cmd = new SqlCommand(q,(SqlConnection)c)) { cmd.Parameters.AddWithValue("@N",m.ProductName); cmd.Parameters.AddWithValue("@B",m.Brand); cmd.Parameters.AddWithValue("@Q",m.Quantity); cmd.Parameters.AddWithValue("@P",m.Price); cmd.Parameters.AddWithValue("@R",m.ProductRating); c.Open(); cmd.ExecuteNonQuery(); } } LogActivity("ADD_ROW", $"Inserted brand-new inventory data row item: '{m.ProductName}' priced at Rs. {m.Price}."); return RedirectToAction(nameof(Index)); }
-        [HttpPost] public IActionResult EditProduct(Product m) { using (var c = _context.CreateConnection()) { string q = "UPDATE T_PRODUCTS SET F_PROD_NAME=@N,F_BRAND=@B,F_QTY=@Q,F_PRICE=@P,F_PROD_RATING=@R WHERE F_PRODUCT_ID=@I"; using (var cmd = new SqlCommand(q,(SqlConnection)c)) { cmd.Parameters.AddWithValue("@I",m.ProductId); cmd.Parameters.AddWithValue("@N",m.ProductName); cmd.Parameters.AddWithValue("@B",m.Brand); cmd.Parameters.AddWithValue("@Q",m.Quantity); cmd.Parameters.AddWithValue("@P",m.Price); cmd.Parameters.AddWithValue("@R",m.ProductRating); c.Open(); cmd.ExecuteNonQuery(); } } LogActivity("EDIT", $"Updated inventory data specification parameters for component: '{m.ProductName}'."); return RedirectToAction(nameof(Index)); }
-        [HttpPost] public IActionResult DeleteProduct(int id) { string namePlaceholder = $"ID {id}"; using (var c = _context.CreateConnection()) { c.Open(); using (var getNameCmd = new SqlCommand("SELECT F_PROD_NAME FROM T_PRODUCTS WHERE F_PRODUCT_ID=@I", (SqlConnection)c)) { getNameCmd.Parameters.AddWithValue("@I", id); namePlaceholder = getNameCmd.ExecuteScalar()?.ToString() ?? namePlaceholder; } using (var cmd = new SqlCommand("DELETE FROM T_PRODUCTS WHERE F_PRODUCT_ID=@I",(SqlConnection)c)) { cmd.Parameters.AddWithValue("@I",id); cmd.ExecuteNonQuery(); } } LogActivity("DELETE", $"Removed item row permanently from product catalog: '{namePlaceholder}'."); return RedirectToAction(nameof(Index)); }
-
-        [HttpPost] public IActionResult AdministrativeAddUser(string username, string password, string mobile) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "INSERT INTO T_USERS (F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER) VALUES (@U, @P, @M)"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@U", username.Trim()); cmd.Parameters.AddWithValue("@P", password.Trim()); cmd.Parameters.AddWithValue("@M", mobile.Trim()); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("USER_MANAGEMENT", $"Created brand-new login profile mapping entry row: '{username.Trim()}' linked with mobile: {mobile}"); return RedirectToAction(nameof(Users)); }
-        [HttpPost] public IActionResult AdministrativeDeleteUser(int userId, string targetName) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "DELETE FROM T_USERS WHERE F_USER_ID = @Id AND F_IS_ADMIN = 0"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@Id", userId); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("USER_MANAGEMENT", $"Pruned user account profile registry rows completely: '{targetName}'."); return RedirectToAction(nameof(Users)); }
-        [HttpPost] public IActionResult AdministrativeChangeUserPassword(int userId, string targetName, string nextPassword) { if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid(); using (var conn = _context.CreateConnection()) { string query = "UPDATE T_USERS SET F_PASSWORD = @P WHERE F_USER_ID = @Id"; using (var cmd = new SqlCommand(query, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@P", nextPassword.Trim()); cmd.Parameters.AddWithValue("@Id", userId); conn.Open(); cmd.ExecuteNonQuery(); } } LogActivity("PASSWORD_CHANGE", $"Forced password credential modification overwrite for account user: '{targetName}'."); return RedirectToAction(nameof(Users)); }
->>>>>>> c97f2f17cfb8fcc7c81cdffef7442debde0f0061
 
         // =========================================================
         // 6. FILE STREAMS SYSTEM OPERATIONS PLUGINS (EPPLUS)
         // =========================================================
-<<<<<<< HEAD
         public IActionResult DownloadTemplate()
         {
             LogActivity("DOWNLOAD", "Requested an empty standard Excel layout parsing template spreadsheet package file.");
@@ -509,11 +477,6 @@ namespace ProductHub_MVC.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
-=======
-        public IActionResult DownloadTemplate() { LogActivity("DOWNLOAD", "Requested an empty standard Excel layout parsing template spreadsheet package file."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); using (var p = new ExcelPackage()) { var worksheet = p.Workbook.Worksheets.Add("Template"); BuildExcelHeaderSchema(worksheet); return File(p.GetAsByteArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ProductTemplate.xlsx"); } }
-        public IActionResult ExportData(string brandFilter, double? minPrice, double? maxPrice, double? minRating) { LogActivity("EXPORT", "Generated spreadsheet download package compiling custom active catalog table filters data logs."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); List<Product> products = FetchFilteredProducts(brandFilter, minPrice, maxPrice, minRating, ""); using (var package = new ExcelPackage()) { var worksheet = package.Workbook.Worksheets.Add("Records"); BuildExcelHeaderSchema(worksheet); int r = 2; foreach (var p in products) { worksheet.Cells[r, 1].Value = p.ProductName; worksheet.Cells[r, 2].Value = p.Brand; worksheet.Cells[r, 3].Value = p.Quantity; worksheet.Cells[r, 4].Value = p.Price; worksheet.Cells[r, 6].Value = p.ProductRating; r++; } return File(package.GetAsByteArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "ProductHub_Export.xlsx"); } }
-        [HttpPost] public IActionResult ImportData(IFormFile alexaExcelFile) { LogActivity("IMPORT", "Uploaded file spreadsheet stream dataset packages for core table processing matrix loops."); OfficeOpenXml.ExcelPackage.License.SetNonCommercialPersonal("ProductHub"); using (var stream = new MemoryStream()) { alexaExcelFile.CopyTo(stream); using (var package = new ExcelPackage(stream)) { var ws = package.Workbook.Worksheets.FirstOrDefault(); if (ws != null && ws.Dimension != null) { using (var conn = _context.CreateConnection()) { conn.Open(); for (int row = 2; row <= ws.Dimension.End.Row; row++) { string name = ws.Cells[row, 1].Value?.ToString() ?? ""; if (string.IsNullOrEmpty(name)) continue; string q = "INSERT INTO T_PRODUCTS (F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_RATING) VALUES (@N, @B, @Q, @P, @R)"; using (var cmd = new SqlCommand(q, (SqlConnection)conn)) { cmd.Parameters.AddWithValue("@N", name); cmd.Parameters.AddWithValue("@B", ws.Cells[row, 2].Value?.ToString() ?? ""); cmd.Parameters.AddWithValue("@Q", ws.Cells[row, 3].Value?.ToString() ?? ""); cmd.Parameters.AddWithValue("@P", Convert.ToDouble(ws.Cells[row, 4].Value ?? 0)); cmd.Parameters.AddWithValue("@R", Convert.ToDouble(ws.Cells[row, 6].Value ?? 0)); cmd.ExecuteNonQuery(); } } } } } return RedirectToAction(nameof(Index)); }
->>>>>>> c97f2f17cfb8fcc7c81cdffef7442debde0f0061
         
         // =======================================================================================
         // 📧 UPDATED: SECURE ATTACHMENT PORTFOLIO PIPELINE WITH ADAPTIVE BANNERS & DYNAMIC STAMPS
@@ -617,12 +580,32 @@ namespace ProductHub_MVC.Controllers
             List<Product> list = new List<Product>();
             using (var connection = _context.CreateConnection()) {
                 string query = "SELECT F_PRODUCT_ID, F_PROD_NAME, F_BRAND, F_QTY, F_PRICE, F_PROD_DESC, F_PROD_RATING FROM T_PRODUCTS WHERE 1=1";
-                if (!string.IsNullOrEmpty(brand)) query += " AND F_BRAND LIKE @B";
+                if (!string.IsNullOrEmpty(brand) && brand != "ALL") {
+                    if (brand.Contains(",")) {
+                        var brandList = brand.Split(',').Select(b => b.Trim()).ToList();
+                        var clauses = new List<string>();
+                        for (int i = 0; i < brandList.Count; i++) {
+                            clauses.Add($"F_BRAND LIKE @B{i}");
+                        }
+                        query += " AND (" + string.Join(" OR ", clauses) + ")";
+                    } else {
+                        query += " AND F_BRAND LIKE @B";
+                    }
+                }
                 if (minP.HasValue) query += " AND F_PRICE >= @MinP";
                 if (maxP.HasValue) query += " AND F_PRICE <= @MaxP";
                 if (minR.HasValue) query += " AND F_PROD_RATING >= @MinR";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection)) {
-                    cmd.Parameters.AddWithValue("@B", !string.IsNullOrEmpty(brand) ? "%" + brand + "%" : DBNull.Value);
+                    if (!string.IsNullOrEmpty(brand) && brand != "ALL") {
+                        if (brand.Contains(",")) {
+                            var brandList = brand.Split(',').Select(b => b.Trim()).ToList();
+                            for (int i = 0; i < brandList.Count; i++) {
+                                cmd.Parameters.AddWithValue($"@B{i}", "%" + brandList[i] + "%");
+                            }
+                        } else {
+                            cmd.Parameters.AddWithValue("@B", "%" + brand + "%");
+                        }
+                    }
                     cmd.Parameters.AddWithValue("@MinP", minP ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@MaxP", maxP ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@MinR", minR ?? (object)DBNull.Value);
