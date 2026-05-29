@@ -5,195 +5,311 @@
     var brandCountsDictionary = ViewBag.AvailableBrandsWithCounts as Dictionary<string, int> ?? new Dictionary<string, int> { { "ALL", 0 } };
 }
 
-<div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded shadow-sm border">
+<div class="container-fluid mt-1 saas-grid-gap">
+    <!-- Top Action Bar -->
+    <div class="saas-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h3 class="fw-bold text-dark mb-1"><i class="fa-solid fa-users-gear text-success me-2"></i>User Access Management Matrix</h3>
-            <p class="text-muted m-0 small">Enforce structural button visibility permissions and column locks instantly in real-time</p>
+            <h1 class="page-title mb-1"><i class="fa-solid fa-users-gear text-primary me-2"></i>User Access Management Matrix</h1>
+            <p class="text-secondary m-0" style="font-size: 0.9rem;">Enforce structural button visibility permissions and column locks instantly in real-time</p>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addNewUserModal">
-                <i class="fa-solid fa-user-plus me-1"></i> Add New User Account
+            <button class="btn btn-saas-primary" data-bs-toggle="modal" data-bs-target="#addNewUserModal">
+                <i class="fa-solid fa-user-plus me-1"></i> Add New Account
             </button>
-            <a asp-action="History" class="btn btn-warning fw-semibold shadow-sm px-3"><i class="fa-solid fa-history me-1"></i> View Global Logs</a>
-            <a asp-action="Index" class="btn btn-dark fw-semibold shadow-sm px-3">Dashboard</a>
+            <a asp-action="History" class="btn btn-saas-secondary"><i class="fa-solid fa-clock-history me-1"></i> View Global Logs</a>
+            <a asp-action="Index" class="btn btn-saas-secondary">Dashboard</a>
         </div>
     </div>
 
     @if (TempData["SuccessMessage"] != null)
     {
-        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3 small" role="alert">
+        <div class="alert alert-success border-0 shadow-sm p-3 mx-1 mb-0 small fw-bold text-success rounded border-start border-4 border-success d-flex align-items-center alert-dismissible fade show" role="alert" style="border-radius: 12px;">
             <i class="fa-solid fa-circle-check me-2"></i> @TempData["SuccessMessage"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
-    <div class="card shadow-sm border rounded">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-striped align-middle mb-0 text-center">
-                    <thead class="table-light text-secondary small fw-bold">
+    <!-- Main Table Container -->
+    <div class="saas-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="saas-table mb-0 text-center">
+                <thead>
+                    <tr>
+                        <th style="width: 80px; text-align: center;">User ID</th>
+                        <th style="text-align: center;">Username Profile</th>
+                        <th style="text-align: center;">Registered Mobile</th>
+                        <th style="text-align: center;">Email Address</th>
+                        <th style="text-align: center;">Password Key</th>
+                        <th style="width: 140px; text-align: center;">Actions Control</th>
+                        <th class="text-start p-3" style="width: 620px;">Features Access Switches Control Frame</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
                         <tr>
-                            <th>User ID</th>
-                            <th>Username Profile</th>
-                            <th>Registered Mobile</th>
-                            <th>Email Address</th>
-                            <th>Password Key</th>
-                            <th>Actions Control</th>
-                            <th class="text-start p-3" style="width: 580px;">Features Access Switches Control Frame</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-dark small">
-                        @foreach (var u in Model)
-                        {
-                            <tr>
-                                <td class="text-secondary fw-semibold">@u["Id"]</td>
-                                <td class="fw-bold text-dark">👤 @u["Name"]</td>
-                                <td class="fw-semibold text-secondary">📱 @u["Mobile"]</td>
-                                <td class="fw-semibold text-secondary">
-                                    @if (!string.IsNullOrWhiteSpace(u["EmailAddress"]?.ToString())) {
-                                        <span>✉️ @u["EmailAddress"]</span>
-                                    } else {
-                                        <span class="text-muted small"><em>Not Set</em></span>
-                                    }
-                                </td>
-                                <td><code class="bg-light border px-2 py-1 text-danger rounded fw-bold">@u["Password"]</code></td>
+                            <td class="text-secondary fw-semibold">@u["Id"]</td>
+                            <td class="fw-bold text-dark">👤 @u["Name"]</td>
+                            <td class="fw-semibold text-secondary">📱 @u["Mobile"]</td>
+                            <td class="fw-semibold text-secondary">
+                                @if (!string.IsNullOrWhiteSpace(u["EmailAddress"]?.ToString())) {
+                                    <span>✉️ @u["EmailAddress"]</span>
+                                } else {
+                                    <span class="text-muted small"><em>Not Set</em></span>
+                                }
+                            </td>
+                            <td><code class="bg-light border px-2 py-1 text-danger rounded fw-bold">@u["Password"]</code></td>
 
-                                <td>
-                                    @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
-                                        <span class="badge bg-danger">SYSTEM ROOT ADMIN</span>
-                                    } else {
-                                        <div class="d-flex flex-column gap-1 align-items-center">
-                                            <div class="d-flex gap-1 justify-content-center">
-                                                <button type="button" class="btn btn-xs btn-outline-primary fw-bold" onclick="openPassChangeModal('@u["Id"]', '@u["Name"]')">Pass</button>
-                                                <form asp-action="AdministrativeDeleteUser" method="post" onsubmit="return confirm('Prune account record completely?');">
-                                                    <input type="hidden" name="userId" value="@u["Id"]" />
-                                                    <input type="hidden" name="targetName" value="@u["Name"]" />
-                                                    <button type="submit" class="btn btn-xs btn-outline-danger fw-bold">Delete</button>
-                                                </form>
-                                            </div>
-                                            <a asp-action="History" asp-route-targetUser="@u["Name"]" class="btn btn-xs btn-success text-white fw-bold w-100 mt-1" style="font-size:0.7rem; padding:2px 4px;">
-                                                <i class="fa-solid fa-clock-history me-1"></i> View History
-                                            </a>
+                            <td>
+                                @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
+                                    <span class="badge bg-danger p-2" style="border-radius: 8px; font-size: 0.72rem; letter-spacing: 0.3px;">SYSTEM ROOT ADMIN</span>
+                                } else {
+                                    <div class="d-flex flex-column gap-1 align-items-center">
+                                        <div class="d-flex gap-1 justify-content-center">
+                                            <button type="button" class="btn btn-sm btn-saas-secondary fw-bold px-2 py-1" style="font-size:0.75rem; height: 28px;" onclick="openPassChangeModal('@u["Id"]', '@u["Name"]')">Pass</button>
+                                            <form asp-action="AdministrativeDeleteUser" method="post" onsubmit="return confirm('Prune account record completely?');" class="m-0">
+                                                <input type="hidden" name="userId" value="@u["Id"]" />
+                                                <input type="hidden" name="targetName" value="@u["Name"]" />
+                                                <button type="submit" class="btn btn-sm btn-saas-danger fw-bold px-2 py-1" style="font-size:0.75rem; height: 28px;">Delete</button>
+                                            </form>
                                         </div>
-                                    }
-                                </td>
-                                <td>
-                                    @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
-                                        <div class="text-muted small py-2"><i class="fa-solid fa-shield-halved me-1"></i> Root Administrator capabilities are structurally absolute.</div>
-                                    } else {
-                                        <form asp-action="SaveUserConfig" method="post" class="p-3 bg-light border rounded">
-                                            <input type="hidden" name="userId" value="@u["Id"]" />
-                                            <input type="hidden" name="userNameParam" value="@u["Name"]" />
-                                            
-                                            <!-- User Email Input Field -->
-                                            <div class="mb-3 bg-white p-2 border rounded shadow-sm text-start">
-                                                <label class="form-label fw-bold text-dark mb-1 small" style="font-size:0.75rem;"><i class="fa-solid fa-envelope text-primary me-1"></i>User Email (Admin Editable)</label>
-                                                <input type="email" name="userEmail" class="form-control form-control-sm" value="@u["EmailAddress"]" placeholder="user@gmail.com" />
+                                        <a asp-action="History" asp-route-targetUser="@u["Name"]" class="btn btn-sm btn-saas-secondary w-100 mt-1 d-flex justify-content-center align-items-center" style="font-size:0.7rem; padding:4px; height: 26px;">
+                                            <i class="fa-solid fa-clock-history me-1"></i> History
+                                        </a>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (Convert.ToInt32(u["IsAdmin"]) == 1) {
+                                    <div class="text-muted small py-4 text-center">
+                                        <i class="fa-solid fa-shield-halved text-primary fs-3 mb-2 d-block"></i>
+                                        <span class="fw-semibold">Root Administrator capabilities are structurally absolute.</span>
+                                    </div>
+                                } else {
+                                    <form asp-action="SaveUserConfig" method="post" class="p-3 bg-white text-start m-0">
+                                        <input type="hidden" name="userId" value="@u["Id"]" />
+                                        <input type="hidden" name="userNameParam" value="@u["Name"]" />
+                                        
+                                        <div class="row g-3">
+                                            <!-- Left Panel: User Profile & Brands -->
+                                            <div class="col-md-5">
+                                                <!-- Dynamic Email Input -->
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold text-secondary small">User Email</label>
+                                                    <input type="email" name="userEmail" class="form-control" value="@u["EmailAddress"]" placeholder="user@gmail.com" />
+                                                </div>
+
+                                                <!-- Brands restriction Dropdown checklist -->
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold text-secondary small d-block">Restricted Brands Lock</label>
+                                                    <input type="hidden" name="restrictedBrand" id="restrictedBrand_@u["Id"]" value="@u["RestrictedBrand"]" />
+                                                    <div class="dropdown w-100">
+                                                        <button class="btn btn-sm btn-saas-secondary dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center" type="button" id="brandBtn_@u["Id"]" data-bs-toggle="dropdown" aria-expanded="false" style="height: 38px;">
+                                                            @{
+                                                                string restrictedStr = u["RestrictedBrand"].ToString();
+                                                                string buttonText = "ALL";
+                                                                if (restrictedStr != "ALL" && !string.IsNullOrEmpty(restrictedStr)) {
+                                                                    var parts = restrictedStr.Split(',');
+                                                                    if (parts.Length == 1) {
+                                                                        int count = brandCountsDictionary.ContainsKey(parts[0]) ? brandCountsDictionary[parts[0]] : 0;
+                                                                        buttonText = $"{parts[0]} ({count} Items)";
+                                                                    } else {
+                                                                        int totalItems = 0;
+                                                                        foreach (var part in parts) {
+                                                                            if (brandCountsDictionary.ContainsKey(part)) totalItems += brandCountsDictionary[part];
+                                                                        }
+                                                                        buttonText = $"{parts.Length} Brands ({totalItems} Items)";
+                                                                    }
+                                                                } else {
+                                                                    int count = brandCountsDictionary.ContainsKey("ALL") ? brandCountsDictionary["ALL"] : 0;
+                                                                    buttonText = $"ALL ({count} Products)";
+                                                                }
+                                                            }
+                                                            <span>@buttonText</span>
+                                                        </button>
+                                                        <div class="dropdown-menu p-3 shadow border-0 mt-2" aria-labelledby="brandBtn_@u["Id"]" style="min-width: 240px; max-height: 250px; overflow-y: auto; border-radius: 12px;">
+                                                            <div class="form-check border-bottom pb-2 mb-2">
+                                                                <input class="form-check-input brand-chk-all" type="checkbox" id="chkAll_@u["Id"]" value="ALL" @(u["RestrictedBrand"].ToString() == "ALL" ? "checked" : "") onchange="onBrandAllChanged(@u["Id"])" />
+                                                                <label class="form-check-label small fw-bold text-success" for="chkAll_@u["Id"]">
+                                                                    🎯 ALL (@(brandCountsDictionary.ContainsKey("ALL") ? brandCountsDictionary["ALL"] : 0) Products)
+                                                                </label>
+                                                            </div>
+                                                            @foreach (var kvp in brandCountsDictionary)
+                                                            {
+                                                                if (kvp.Key == "ALL") continue;
+                                                                bool isChecked = u["RestrictedBrand"].ToString().Split(',').Contains(kvp.Key);
+                                                                <div class="form-check my-1">
+                                                                    <input class="form-check-input brand-chk-item brand-chk-@u["Id"]" type="checkbox" id="chk_@u["Id"]_@kvp.Key" value="@kvp.Key" data-count="@kvp.Value" @(isChecked ? "checked" : "") onchange="onBrandItemChanged(@u["Id"])" />
+                                                                    <label class="form-check-label small" for="chk_@u["Id"]_@kvp.Key">
+                                                                        @kvp.Key (@kvp.Value Items)
+                                                                    </label>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div class="row text-start mb-2">
-                                                <div class="col-md-5 mb-2">
-                                                    <div class="fw-bold text-primary mb-1 border-bottom pb-1" style="font-size:0.75rem; text-transform:uppercase;">Top Utility Buttons</div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["AddRow"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="addRow" value="@u["AddRow"]" /><label class="form-check-label text-muted small">Add Row Button</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Download"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="download" value="@u["Download"]" /><label class="form-check-label text-muted small">Download Template</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Import"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="import" value="@u["Import"]" /><label class="form-check-label text-muted small">Import Excel</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Export"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="export" value="@u["Export"]" /><label class="form-check-label text-muted small">Export Data</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Compare"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="compare" value="@u["Compare"]" /><label class="form-check-label text-muted small">Compare Actions</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Email"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="email" value="@u["Email"]" /><label class="form-check-label text-muted small">Email Services</label></div>
-                                                </div>
-                                                
-                                                <div class="col-md-7 mb-2">
-                                                    <div class="fw-bold text-success mb-1 border-bottom pb-1" style="font-size:0.75rem; text-transform:uppercase;">Columns & Row Actions</div>
-                                                    
-                                                    <div class="d-flex align-items-center justify-content-between my-1 bg-white p-1 rounded border">
-                                                        <div class="form-check form-switch ps-5">
-                                                            <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeBrand"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
-                                                            <input type="hidden" name="seeBrand" value="@u["SeeBrand"]" />
-                                                            <label class="form-check-label text-muted small fw-bold">Show Brand</label>
-                                                        </div>
-                                                        <div class="pe-1">
-                                                            <input type="hidden" name="restrictedBrand" id="restrictedBrand_@u["Id"]" value="@u["RestrictedBrand"]" />
-                                                            <div class="dropdown">
-                                                                <button class="btn btn-sm btn-outline-success dropdown-toggle fw-bold py-0" type="button" id="brandBtn_@u["Id"]" data-bs-toggle="dropdown" aria-expanded="false" style="font-size:0.75rem; min-width:165px; height:26px; text-align:left;">
-                                                                    @{
-                                                                        string restrictedStr = u["RestrictedBrand"].ToString();
-                                                                        string buttonText = "ALL";
-                                                                        if (restrictedStr != "ALL" && !string.IsNullOrEmpty(restrictedStr)) {
-                                                                            var parts = restrictedStr.Split(',');
-                                                                            if (parts.Length == 1) {
-                                                                                int count = brandCountsDictionary.ContainsKey(parts[0]) ? brandCountsDictionary[parts[0]] : 0;
-                                                                                buttonText = $"{parts[0]} ({count} Items)";
-                                                                            } else {
-                                                                                int totalItems = 0;
-                                                                                foreach (var part in parts) {
-                                                                                    if (brandCountsDictionary.ContainsKey(part)) totalItems += brandCountsDictionary[part];
-                                                                                }
-                                                                                buttonText = $"{parts.Length} Brands ({totalItems} Items)";
-                                                                            }
-                                                                        } else {
-                                                                            int count = brandCountsDictionary.ContainsKey("ALL") ? brandCountsDictionary["ALL"] : 0;
-                                                                            buttonText = $"ALL ({count} Products)";
-                                                                        }
-                                                                    }
-                                                                    @buttonText
-                                                                </button>
-                                                                <div class="dropdown-menu p-3 shadow" aria-labelledby="brandBtn_@u["Id"]" style="min-width: 200px; max-height: 250px; overflow-y: auto;">
-                                                                    <div class="form-check border-bottom pb-2 mb-2">
-                                                                        <input class="form-check-input brand-chk-all" type="checkbox" id="chkAll_@u["Id"]" value="ALL" @(u["RestrictedBrand"].ToString() == "ALL" ? "checked" : "") onchange="onBrandAllChanged(@u["Id"])" />
-                                                                        <label class="form-check-label small fw-bold text-success" for="chkAll_@u["Id"]">
-                                                                            🎯 ALL (@(brandCountsDictionary.ContainsKey("ALL") ? brandCountsDictionary["ALL"] : 0) Products)
-                                                                        </label>
-                                                                    </div>
-                                                                    @foreach (var kvp in brandCountsDictionary)
-                                                                    {
-                                                                        if (kvp.Key == "ALL") continue;
-                                                                        bool isChecked = u["RestrictedBrand"].ToString().Split(',').Contains(kvp.Key);
-                                                                        <div class="form-check my-1">
-                                                                            <input class="form-check-input brand-chk-item brand-chk-@u["Id"]" type="checkbox" id="chk_@u["Id"]_@kvp.Key" value="@kvp.Key" data-count="@kvp.Value" @(isChecked ? "checked" : "") onchange="onBrandItemChanged(@u["Id"])" />
-                                                                            <label class="form-check-label small" for="chk_@u["Id"]_@kvp.Key">
-                                                                                @kvp.Key (@kvp.Value Items)
-                                                                            </label>
-                                                                        </div>
-                                                                    }
-                                                                </div>
+                                            <!-- Right Panel: Grid of modern toggle switches -->
+                                            <div class="col-md-7">
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["AddRow"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="addRow" value="@u["AddRow"]" />
+                                                                <label class="form-check-label small">Add Row Button</label>
                                                             </div>
                                                         </div>
                                                     </div>
-
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeQty"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seeQty" value="@u["SeeQty"]" /><label class="form-check-label text-muted small">Show Quantity Column</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeePrice"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seePrice" value="@u["SeePrice"]" /><label class="form-check-label text-muted small">Show Price Column</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeRating"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="seeRating" value="@u["SeeRating"]" /><label class="form-check-label text-muted small">Show Rating Column</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1 border-top pt-1 mt-2"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseEdit"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="useEdit" value="@u["UseEdit"]" /><label class="form-check-label text-muted small fw-bold text-primary">Enable Inline Edit</label></div>
-                                                    <div class="form-check form-switch ps-5 my-1"><input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseDelete"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" /><input type="hidden" name="useDelete" value="@u["UseDelete"]" /><label class="form-check-label text-muted small fw-bold text-danger">Enable Inline Delete</label></div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Download"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="download" value="@u["Download"]" />
+                                                                <label class="form-check-label small">Download Temp</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Import"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="import" value="@u["Import"]" />
+                                                                <label class="form-check-label small">Import Excel</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Export"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="export" value="@u["Export"]" />
+                                                                <label class="form-check-label small">Export Data</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Compare"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="compare" value="@u["Compare"]" />
+                                                                <label class="form-check-label small">Compare Actions</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["Email"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="email" value="@u["Email"]" />
+                                                                <label class="form-check-label small">Email Services</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeBrand"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="seeBrand" value="@u["SeeBrand"]" />
+                                                                <label class="form-check-label small text-primary">Show Brand Col</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeQty"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="seeQty" value="@u["SeeQty"]" />
+                                                                <label class="form-check-label small text-primary">Show Qty Col</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeePrice"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="seePrice" value="@u["SeePrice"]" />
+                                                                <label class="form-check-label small text-primary">Show Price Col</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["SeeRating"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="seeRating" value="@u["SeeRating"]" />
+                                                                <label class="form-check-label small text-primary">Show Rating Col</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card" style="border-color: rgba(37,99,235,0.25);">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseEdit"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="useEdit" value="@u["UseEdit"]" />
+                                                                <label class="form-check-label small text-primary fw-bold">Inline Edit</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <div class="saas-toggle-card" style="border-color: rgba(239,68,68,0.25);">
+                                                            <div class="form-check form-switch">
+                                                                <input type="checkbox" class="form-check-input" value="1" @(Convert.ToInt32(u["UseDelete"]) == 1 ? "checked" : "") onchange="this.nextElementSibling.value = this.checked ? '1' : '0';" />
+                                                                <input type="hidden" name="useDelete" value="@u["UseDelete"]" />
+                                                                <label class="form-check-label small text-danger fw-bold">Inline Delete</label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            
-                                            <button type="submit" class="btn btn-sm btn-success w-100 fw-bold mt-2"><i class="fa-solid fa-square-check me-1"></i> Synchronize Role Constraints</button>
-                                        </form>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn btn-saas-primary w-100 fw-bold mt-3 justify-content-center">
+                                            <i class="fa-solid fa-cloud-arrow-up me-1"></i> Synchronize Role Constraints
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
+<!-- Modal forms -->
 <div class="modal fade" id="addNewUserModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px; overflow: hidden;">
             <form asp-action="AdministrativeAddUser" method="post">
-                <div class="modal-header bg-dark text-white"><h5 class="modal-title fw-bold">👤 Append New Account Mapping</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body small">
-                    <div class="mb-3"><label class="form-label fw-bold">Account Username Profile</label><input type="text" name="username" class="form-control form-control-sm" required /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Mobile Registration Number</label><input type="text" name="mobile" class="form-control form-control-sm" required /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Email Address</label><input type="email" name="email" class="form-control form-control-sm" required placeholder="user@gmail.com" /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Password Security Key</label><input type="text" name="password" class="form-control form-control-sm" required /></div>
+                <div class="modal-header bg-dark text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold m-0"><i class="fa-solid fa-user-plus me-2"></i>Register New Account</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm px-4">Register User</button></div>
+                <div class="modal-body p-4 small">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Account Username Profile</label>
+                        <input type="text" name="username" class="form-control" required autocomplete="off" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mobile Registration Number</label>
+                        <input type="text" name="mobile" class="form-control" required placeholder="e.g. 9876543210" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email Address</label>
+                        <input type="email" name="email" class="form-control" required placeholder="user@gmail.com" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Password Security Key</label>
+                        <input type="text" name="password" class="form-control" required autocomplete="new-password" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-saas-secondary py-2 px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-saas-primary py-2 px-4">Register User</button>
+                </div>
             </form>
         </div>
     </div>
@@ -201,16 +317,28 @@
 
 <div class="modal fade" id="adminPassChangeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px; overflow: hidden;">
             <form asp-action="AdministrativeChangeUserPassword" method="post">
                 <input type="hidden" name="userId" id="tgt_userId" />
                 <input type="hidden" name="targetName" id="tgt_username_hidden" />
-                <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">🔑 Overwrite User Password</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-                <div class="modal-body small">
-                    <div class="mb-3"><label class="form-label fw-bold">Target Account Profile</label><input type="text" id="tgt_username" class="form-control form-control-sm bg-light" readonly /></div>
-                    <div class="mb-3"><label class="form-label fw-bold">Input New Password Security Key</label><input type="text" name="nextPassword" class="form-control form-control-sm" required /></div>
+                <div class="modal-header bg-primary text-white border-0 py-3">
+                    <h5 class="modal-title fw-bold m-0"><i class="fa-solid fa-key me-2"></i>Overwrite Password Key</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary btn-sm px-4">Overwrite Key</button></div>
+                <div class="modal-body p-4 small">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Account Profile</label>
+                        <input type="text" id="tgt_username" class="form-control bg-light" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">New Password Security Key</label>
+                        <input type="text" name="nextPassword" class="form-control" required autocomplete="new-password" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-saas-secondary py-2 px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-saas-primary py-2 px-4">Overwrite Key</button>
+                </div>
             </form>
         </div>
     </div>

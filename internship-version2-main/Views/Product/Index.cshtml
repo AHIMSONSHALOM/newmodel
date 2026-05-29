@@ -4,129 +4,168 @@
     int sequentialNumber = 1;
 }
 
-<div class="container-fluid mt-1">
-    <div class="d-flex justify-content-end align-items-center mb-3 flex-wrap gap-2 bg-white p-2 rounded shadow-sm border">
+@functions {
+    public string GetStarRating(double rating) {
+        int rounded = (int)Math.Round(rating);
+        string stars = "";
+        for (int i = 1; i <= 5; i++) {
+            if (i <= rounded) stars += "★";
+            else stars += "☆";
+        }
+        return stars;
+    }
+}
+
+<div class="container-fluid mt-1 saas-grid-gap">
+    <!-- Top Dashboard Header with Premium Buttons -->
+    <div class="saas-card mb-0 d-flex justify-content-end align-items-center flex-wrap gap-2">
         <div class="d-flex gap-2">
             @if (ViewBag.CanAddRow == 1)
             {
-                <button class="btn btn-success fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#addProductModal">Add Row</button>
+                <button class="btn btn-saas-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                    <i class="fa-solid fa-plus me-1"></i> Add Row
+                </button>
             }
             @if (ViewBag.CanDownload == 1)
             {
-                <a asp-action="DownloadTemplate" class="btn btn-success fw-semibold shadow-sm px-3">Download Template</a>
+                <a asp-action="DownloadTemplate" class="btn btn-saas-secondary">
+                    <i class="fa-solid fa-download me-1"></i> Download Template
+                </a>
             }
             @if (ViewBag.CanImport == 1)
             {
-                <button class="btn btn-success fw-semibold shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#importExcelModal">Import</button>
+                <button class="btn btn-saas-secondary" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                    <i class="fa-solid fa-file-import me-1"></i> Import
+                </button>
             }
             @if (ViewBag.CanExport == 1)
             {
-                <a href="#" onclick="triggerExport()" class="btn btn-success fw-semibold shadow-sm px-3">Export</a>
+                <a href="#" onclick="triggerExport()" class="btn btn-saas-secondary">
+                    <i class="fa-solid fa-file-export me-1"></i> Export
+                </a>
             }
             @if (ViewBag.CanCompare == 1)
             {
-                <button type="button" onclick="triggerComparison()" class="btn btn-primary fw-semibold shadow-sm px-4">Compare</button>
+                <button type="button" onclick="triggerComparison()" class="btn btn-saas-primary">
+                    <i class="fa-solid fa-code-compare me-1"></i> Compare
+                </button>
             }
             @if (ViewBag.CanEmail == 1)
             {
-                <button type="button" data-bs-toggle="modal" data-bs-target="#dispatchCheckedEmailModal" class="btn btn-success fw-semibold shadow-sm px-4">Email</button>
+                <button type="button" data-bs-toggle="modal" data-bs-target="#dispatchCheckedEmailModal" class="btn btn-saas-primary">
+                    <i class="fa-solid fa-envelope me-1"></i> Email
+                </button>
             }
         </div>
     </div>
 
     @if (ViewBag.ForcedIsolationNotice != null)
     {
-        <div class="alert alert-warning border-0 bg-white shadow-sm p-3 mx-1 mb-3 small fw-bold text-dark rounded border-start border-4 border-warning d-flex align-items-center">
+        <div class="alert alert-warning border-0 bg-white shadow-sm p-3 mx-1 mb-0 small fw-bold text-dark rounded border-start border-4 border-warning d-flex align-items-center">
             <i class="fa-solid fa-shield-halved text-warning fs-5 me-2"></i>
             <span>@ViewBag.ForcedIsolationNotice</span>
         </div>
     }
 
-    <div class="row g-3">
+    <div class="row g-4">
+        <!-- Sidebar filters -->
         <div class="col-md-3">
-            <div class="card shadow-sm border rounded">
-                <div class="card-header bg-dark text-white fw-bold text-uppercase p-3" style="font-size: 0.85rem; letter-spacing: 0.5px;">
-                    Control Filters Menu
-                </div>
-                <div class="card-body bg-white p-3">
-                    <form id="filterForm" method="get" asp-action="Index">
-                        <input type="hidden" name="sortBy" value="@ViewBag.CurrentSort" />
-                        
-                        @if (ViewBag.CanSeeBrand == 1)
-                        {
-                            <div class="mb-3">
-                                <label class="form-label fw-bold text-secondary small">+ Brands</label>
-                                <input type="text" name="brandFilter" value="@ViewBag.CurrentBrand" class="form-control form-control-sm" placeholder="Search product line..." />
-                            </div>
-                        }
-                        
+            <div class="saas-sidebar">
+                <h4 class="saas-sidebar-title">
+                    <i class="fa-solid fa-filter text-primary me-2"></i>Filters
+                </h4>
+                <form id="filterForm" method="get" asp-action="Index">
+                    <input type="hidden" name="sortBy" value="@ViewBag.CurrentSort" />
+                    
+                    @if (ViewBag.CanSeeBrand == 1)
+                    {
                         <div class="mb-3">
-                            <label class="form-label fw-bold text-secondary small">+ Price Range</label>
-                            <div class="d-flex gap-2">
-                                <input type="number" name="minPrice" value="@ViewBag.MinPrice" class="form-control form-control-sm" placeholder="Min" />
-                                <input type="number" name="maxPrice" value="@ViewBag.MaxPrice" class="form-control form-control-sm" placeholder="Max" />
-                            </div>
+                            <label class="form-label fw-bold text-secondary small">Brands</label>
+                            <input type="text" name="brandFilter" value="@ViewBag.CurrentBrand" class="form-control" placeholder="Search product line..." />
                         </div>
-                        <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold py-2 mb-2">Apply Filters</button>
-                        <a asp-action="Index" class="btn btn-outline-secondary btn-sm w-100 fw-semibold py-2">Reset Filters</a>
-                    </form>
-                </div>
+                    }
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary small">Price Range</label>
+                        <div class="d-flex gap-2">
+                            <input type="number" name="minPrice" value="@ViewBag.MinPrice" class="form-control" placeholder="Min" />
+                            <input type="number" name="maxPrice" value="@ViewBag.MaxPrice" class="form-control" placeholder="Max" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-saas-primary w-100 fw-bold py-2 mb-2">Apply Filters</button>
+                    <a asp-action="Index" class="btn btn-saas-secondary w-100 fw-semibold py-2">Reset Filters</a>
+                </form>
             </div>
         </div>
 
+        <!-- Inventory List Table -->
         <div class="col-md-9">
-            <div class="card shadow-sm border rounded">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <form id="checkedItemsForm" method="post">
-                            <table class="table table-hover align-middle mb-0 text-center">
-                                <thead class="table-light text-secondary small fw-bold">
+            <div class="saas-card p-0 overflow-hidden">
+                <div class="table-responsive">
+                    <form id="checkedItemsForm" method="post">
+                        <table class="saas-table mb-0 text-center">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px; text-align: center;">S.No</th>
+                                    @if (ViewBag.CanUseEdit == 1 || ViewBag.CanUseDelete == 1)
+                                    {
+                                        <th style="width: 160px; text-align: center;">Action</th>
+                                    }
+                                    <th style="width: 60px; text-align: center;"><input type="checkbox" id="selectAllBoxes" class="form-check-input" /></th>
+                                    <th class="text-start">Product Name ↕️</th>
+                                    @if (ViewBag.CanSeeBrand == 1) { <th style="text-align: center;">Brand</th> }
+                                    @if (ViewBag.CanSeeQty == 1) { <th style="text-align: center;">Quantity</th> }
+                                    @if (ViewBag.CanSeePrice == 1) { <th style="text-align: center;">Price ↕️</th> }
+                                    @if (ViewBag.CanSeeRating == 1) { <th style="text-align: center;">Rating</th> }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var prod in Model)
+                                {
                                     <tr>
-                                        <th style="width: 60px;">S.No</th>
+                                        <td class="text-secondary fw-semibold">@(sequentialNumber++)</td>
                                         @if (ViewBag.CanUseEdit == 1 || ViewBag.CanUseDelete == 1)
                                         {
-                                            <th style="width: 140px;">Action</th>
+                                            <td>
+                                                <div class="d-flex justify-content-center gap-1">
+                                                    @if (ViewBag.CanUseEdit == 1)
+                                                    {
+                                                        <button type="button" class="btn btn-sm btn-saas-secondary fw-semibold px-2 py-1" style="font-size: 0.78rem; height: 28px;" onclick="triggerEditModal('@prod.ProductId', '@prod.ProductName', '@prod.Brand', '@prod.Quantity', '@prod.Price', '@prod.ProductRating', '@prod.ProductDescription')">Edit</button>
+                                                    }
+                                                    @if (ViewBag.CanUseDelete == 1)
+                                                    {
+                                                        <button type="button" class="btn btn-sm btn-saas-danger fw-semibold px-2 py-1" style="font-size: 0.78rem; height: 28px;" onclick="triggerDeletePost('@prod.ProductId')">Delete</button>
+                                                    }
+                                                </div>
+                                            </td>
                                         }
-                                        <th style="width: 40px;"><input type="checkbox" id="selectAllBoxes" class="form-check-input" /></th>
-                                        <th class="text-start">Product Name ↕️</th>
-                                        @if (ViewBag.CanSeeBrand == 1) { <th>Brand</th> }
-                                        @if (ViewBag.CanSeeQty == 1) { <th>Quantity</th> }
-                                        @if (ViewBag.CanSeePrice == 1) { <th>Price ↕️</th> }
-                                        @if (ViewBag.CanSeeRating == 1) { <th>Rating</th> }
+                                        <td><input type="checkbox" name="ids" value="@prod.ProductId" class="form-check-input row-item-checkbox" /></td>
+                                        <td class="text-start fw-semibold text-dark">@prod.ProductName</td>
+                                        @if (ViewBag.CanSeeBrand == 1) { 
+                                            <td>
+                                                @{
+                                                    string brandLower = prod.Brand?.ToLower() ?? "";
+                                                    string brandBadgeClass = "brand-badge-default";
+                                                    if (brandLower.Contains("apple")) brandBadgeClass = "brand-badge-apple";
+                                                    else if (brandLower.Contains("samsung")) brandBadgeClass = "brand-badge-samsung";
+                                                    else if (brandLower.Contains("google")) brandBadgeClass = "brand-badge-google";
+                                                }
+                                                <span class="brand-badge @brandBadgeClass">@prod.Brand</span>
+                                            </td>
+                                        }
+                                        @if (ViewBag.CanSeeQty == 1) { <td class="text-secondary">@prod.Quantity</td> }
+                                        @if (ViewBag.CanSeePrice == 1) { <td class="text-success fw-bold">Rs. @prod.Price.ToString("N2")</td> }
+                                        @if (ViewBag.CanSeeRating == 1) { 
+                                            <td class="fw-semibold text-nowrap">
+                                                <span class="rating-stars">@GetStarRating(prod.ProductRating)</span> 
+                                                <span class="text-secondary ms-1" style="font-size: 0.85rem;">@prod.ProductRating.ToString("0.0")</span>
+                                            </td> 
+                                        }
                                     </tr>
-                                </thead>
-                                <tbody class="text-dark small">
-                                    @foreach (var prod in Model)
-                                    {
-                                        <tr>
-                                            <td class="text-secondary fw-semibold">@(sequentialNumber++)</td>
-                                            @if (ViewBag.CanUseEdit == 1 || ViewBag.CanUseDelete == 1)
-                                            {
-                                                <td>
-                                                    <div class="d-flex justify-content-center gap-1">
-                                                        @if (ViewBag.CanUseEdit == 1)
-                                                        {
-                                                            <button type="button" class="btn btn-sm btn-outline-primary fw-semibold px-2 py-0" style="font-size: 0.78rem; height: 24px;" onclick="triggerEditModal('@prod.ProductId', '@prod.ProductName', '@prod.Brand', '@prod.Quantity', '@prod.Price', '@prod.ProductRating', '@prod.ProductDescription')">Edit</button>
-                                                        }
-                                                        @if (ViewBag.CanUseDelete == 1)
-                                                        {
-                                                            <button type="button" class="btn btn-sm btn-outline-danger fw-semibold px-2 py-0" style="font-size: 0.78rem; height: 24px;" onclick="triggerDeletePost('@prod.ProductId')">Delete</button>
-                                                        }
-                                                    </div>
-                                                </td>
-                                            }
-                                            <td><input type="checkbox" name="ids" value="@prod.ProductId" class="form-check-input row-item-checkbox" /></td>
-                                            <td class="text-start fw-semibold text-dark">@prod.ProductName</td>
-                                            @if (ViewBag.CanSeeBrand == 1) { <td><span class="badge bg-light text-dark border px-2 py-1">@prod.Brand</span></td> }
-                                            @if (ViewBag.CanSeeQty == 1) { <td class="text-secondary">@prod.Quantity</td> }
-                                            @if (ViewBag.CanSeePrice == 1) { <td class="text-success fw-bold">Rs. @prod.Price.ToString("N2")</td> }
-                                            @if (ViewBag.CanSeeRating == 1) { <td class="fw-semibold"><span class="text-warning">★</span> @prod.ProductRating.ToString("0.0")</td> }
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </form>
-                    </div>
+                                }
+                            </tbody>
+                        </table>
+                    </form>
                 </div>
             </div>
         </div>

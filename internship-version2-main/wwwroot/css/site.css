@@ -1,31 +1,295 @@
-html {
-  font-size: 14px;
-}
-
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+:root {
+  --primary-color: #2563EB;
+  --secondary-color: #1E293B;
+  --success-color: #10B981;
+  --danger-color: #EF4444;
+  --warning-color: #F59E0B;
+  --bg-color: #F8FAFC;
+  --card-bg: #FFFFFF;
+  --border-color: #E2E8F0;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
 }
 
 body {
+  font-family: 'Inter', 'Poppins', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
   margin-bottom: 60px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+/* Typography sizes */
+h1, .page-title {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--secondary-color);
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+/* Premium Card design */
+.saas-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+}
+
+/* Buttons */
+.btn-saas-primary {
+  background-color: var(--primary-color) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 12px 24px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+}
+.btn-saas-primary:hover {
+  background-color: #1D4ED8 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+}
+
+.btn-saas-secondary {
+  background-color: #FFFFFF !important;
+  color: var(--secondary-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 10px !important;
+  padding: 12px 24px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+}
+.btn-saas-secondary:hover {
+  background-color: #F8FAFC !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.btn-saas-danger {
+  background-color: #FEF2F2 !important;
+  color: #DC2626 !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 12px 24px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.2s ease !important;
+}
+.btn-saas-danger:hover {
+  background-color: #FEE2E2 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1) !important;
+}
+
+/* Table Design */
+.saas-table {
+  width: 100%;
+  margin-bottom: 1rem;
+  vertical-align: top;
+  border-collapse: collapse;
+}
+.saas-table thead {
+  background-color: #F8FAFC;
+}
+.saas-table th {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 16px;
+  text-align: left;
+  border-bottom: 2px solid var(--border-color);
+}
+.saas-table td {
+  padding: 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 14px;
+  color: #334155;
+  transition: background-color 0.2s ease;
+}
+.saas-table tbody tr:hover td {
+  background-color: #F8FAFC;
+}
+
+/* Brand pill badges */
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.brand-badge-apple {
+  background-color: #EEF2FF !important;
+  color: #4338CA !important;
+}
+.brand-badge-samsung {
+  background-color: #ECFDF5 !important;
+  color: #047857 !important;
+}
+.brand-badge-google {
+  background-color: #FEF3C7 !important;
+  color: #B45309 !important;
+}
+.brand-badge-default {
+  background-color: #F1F5F9 !important;
+  color: #475569 !important;
+}
+
+/* Rating Stars */
+.rating-stars {
+  color: #F59E0B;
+  font-weight: bold;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+}
+
+/* Sidebar filter */
+.saas-sidebar {
+  background: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+.saas-sidebar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--secondary-color);
+  margin-bottom: 20px;
+}
+
+/* Header Navbar redesign */
+.saas-navbar {
+  height: 70px;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 24px;
+}
+.saas-nav-brand {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary-color) !important;
+  letter-spacing: 0.05em;
+}
+.saas-nav-link {
+  color: var(--text-secondary) !important;
+  font-weight: 600;
+  padding: 0 16px;
+  height: 70px;
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.saas-nav-link:hover {
+  color: var(--primary-color) !important;
+}
+.saas-nav-link.active {
+  color: var(--primary-color) !important;
+}
+.saas-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  background-color: var(--primary-color);
+  border-radius: 3px 3px 0 0;
+}
+
+/* Modern Toggle Switch */
+.saas-toggle-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+.saas-toggle-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.05);
+}
+
+.saas-grid-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Premium Form Elements */
+.form-control {
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--text-primary) !important;
+  background-color: #FFFFFF !important;
+  transition: all 0.15s ease-in-out !important;
+}
+.form-control:focus {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+  outline: 0 !important;
+}
+
+/* Custom switch overrides for SaaS dashboard */
+.form-check.form-switch {
+  padding-left: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+}
+.form-check.form-switch .form-check-input {
+  float: none !important;
+  margin-left: 0 !important;
+  width: 2.8em !important;
+  height: 1.5em !important;
+  cursor: pointer !important;
+  background-color: #CBD5E1 !important;
+  border-color: #94A3B8 !important;
+  border-radius: 2em !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+  transition: background-position 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+.form-check.form-switch .form-check-input:focus {
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+  border-color: #93C5FD !important;
+}
+.form-check.form-switch .form-check-input:checked {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  background-position: right center !important;
+}
+.form-check-label {
+  font-weight: 600 !important;
+  color: var(--secondary-color) !important;
+  cursor: pointer !important;
 }

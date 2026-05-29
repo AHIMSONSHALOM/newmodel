@@ -2,34 +2,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Verify Identity OTP Key</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verify OTP - ProductHub</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --secondary-color: #1E293B;
+            --bg-color: #F8FAFC;
+            --border-color: #E2E8F0;
+        }
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .otp-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+        }
+        .otp-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+        .form-control {
+            border: 1px solid var(--border-color) !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+        .form-control:focus {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+            outline: 0 !important;
+        }
+        .btn-saas-primary {
+            background-color: var(--primary-color);
+            color: #FFFFFF;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 24px;
+            font-weight: 600;
+            font-size: 15px;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .btn-saas-primary:hover {
+            background-color: #1D4ED8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            color: #FFFFFF;
+        }
+        .letter-spacing {
+            letter-spacing: 0.5em;
+            font-size: 22px !important;
+            font-family: 'Poppins', sans-serif;
+        }
+    </style>
 </head>
-<body class="bg-light d-flex align-items-center justify-content-center" style="height: 100vh;">
-    <div class="card shadow border-0 p-4 rounded" style="width: 100%; max-width: 420px;">
-        <div class="text-center mb-3"><h4 class="fw-bold text-dark m-0">✉️ VERIFY TRANSIT KEY</h4></div>
-        @if (TempData["Success"] != null) { <div class="alert alert-success small py-2 text-success fw-bold border-0">@TempData["Success"]</div> }
-        @if (TempData["Error"] != null) { <div class="alert alert-danger small py-2 border-0">@TempData["Error"]</div> }
-        <form asp-action="ResetPasswordWithOtp" method="post">
+<body>
+    <div class="otp-card">
+        <div class="text-center mb-4">
+            <i class="fa-solid fa-envelope-open-text text-primary mb-3" style="font-size: 2.8rem;"></i>
+            <h1 class="otp-title">Verify OTP</h1>
+            <p class="text-muted small">Enter the code dispatched to recover your account</p>
+        </div>
+
+        @if (TempData["Success"] != null) { 
+            <div class="alert alert-success border-0 p-3 small mb-3 text-center fw-semibold text-success" style="border-radius: 10px; background-color: #ECFDF5;">
+                <i class="fa-solid fa-circle-check me-1"></i> @TempData["Success"]
+            </div> 
+        }
+        @if (TempData["Error"] != null) { 
+            <div class="alert alert-danger border-0 p-3 small mb-3 text-center fw-semibold text-danger" style="border-radius: 10px; background-color: #FEF2F2;">
+                <i class="fa-solid fa-circle-xmark me-1"></i> @TempData["Error"]
+            </div> 
+        }
+
+        <form asp-action="ResetPasswordWithOtp" method="post" class="d-flex flex-column gap-3">
             <input type="hidden" name="username" value="@ViewBag.Username" />
             <input type="hidden" name="mobileNumber" value="@ViewBag.MobileNum" />
-            <div class="mb-2">
-                <label class="form-label fw-bold small text-secondary">Username</label>
-                <input type="text" class="form-control form-control-sm bg-light" value="@ViewBag.Username" readonly />
+            
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="form-label fw-semibold text-secondary small">Username</label>
+                    <input type="text" class="form-control bg-light" value="@ViewBag.Username" readonly style="cursor: not-allowed;" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-semibold text-secondary small">Mobile</label>
+                    <input type="text" class="form-control bg-light" value="@ViewBag.MobileNum" readonly style="cursor: not-allowed;" />
+                </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold small text-secondary">Mobile Number</label>
-                <input type="text" class="form-control form-control-sm bg-light" value="@ViewBag.MobileNum" readonly />
+
+            <div>
+                <label class="form-label fw-semibold text-secondary small text-center d-block">6-Digit OTP Auth Code</label>
+                <input type="text" name="otpCode" class="form-control text-center fw-bold letter-spacing" maxlength="6" required placeholder="000000" autocomplete="off" />
             </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold small text-secondary">Enter 6-Digit OTP Auth Code</label>
-                <input type="text" name="otpCode" class="form-control text-center fw-bold letter-spacing" maxlength="6" required />
+
+            <div>
+                <label class="form-label fw-semibold text-secondary small">Establish New Password</label>
+                <input type="password" name="newPassword" class="form-control" placeholder="Type new password..." required />
             </div>
-            <div class="mb-4">
-                <label class="form-label fw-bold small text-secondary">Establish New Password Security Key</label>
-                <input type="password" name="newPassword" class="form-control form-control-sm" placeholder="Type brand-new key code..." required />
-            </div>
-            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold py-2">Commit Credentials Overwrite</button>
+
+            <button type="submit" class="btn btn-saas-primary mt-2">Commit Password Reset</button>
         </form>
     </div>
 </body>

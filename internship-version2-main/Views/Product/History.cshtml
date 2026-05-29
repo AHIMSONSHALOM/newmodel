@@ -3,65 +3,75 @@
     ViewData["Title"] = "System Audit Logs Portfolio";
 }
 
-<div class="container-fluid mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded shadow-sm border">
+<div class="container-fluid mt-1 saas-grid-gap">
+    <!-- Top Action Bar -->
+    <div class="saas-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
-            <h3 class="fw-bold text-dark mb-1"><i class="fa-solid fa-clock-history text-warning me-2"></i>System Operations History</h3>
-            <p class="text-muted m-0 small">
+            <h1 class="page-title mb-1"><i class="fa-solid fa-clock-history text-primary me-2"></i>System Operations History</h1>
+            <p class="text-secondary m-0" style="font-size: 0.9rem;">
                 @if (!string.IsNullOrEmpty(ViewBag.SelectedFilterUser)) {
-                    <span>Showing strictly filtered operational history records logs for account user profile: <strong>@ViewBag.SelectedFilterUser</strong></span>
+                    <span>Operational history records logs for user profile: <strong>@ViewBag.SelectedFilterUser</strong></span>
                 } else {
-                    <span>Displaying global system transaction footprints log metrics across user frameworks</span>
+                    <span>Global system transaction footprints log metrics across user frameworks</span>
                 }
             </p>
         </div>
         <div class="d-flex gap-2">
             @if (!string.IsNullOrEmpty(ViewBag.SelectedFilterUser)) {
-                <a asp-action="History" class="btn btn-sm btn-outline-secondary fw-semibold pt-2 px-3">Clear Filters</a>
+                <a asp-action="History" class="btn btn-saas-secondary"><i class="fa-solid fa-filter-circle-xmark me-1"></i> Clear Filters</a>
             }
-            <a asp-action="Users" class="btn btn-sm btn-outline-dark fw-semibold pt-2 px-3">Manage Users</a>
-            <a asp-action="Index" class="btn btn-sm btn-success fw-bold text-white pt-2 px-4">Dashboard</a>
+            <a asp-action="Users" class="btn btn-saas-secondary"><i class="fa-solid fa-users-gear me-1"></i> Manage Users</a>
+            <a asp-action="Index" class="btn btn-saas-primary">Dashboard</a>
         </div>
     </div>
 
-    <div class="card shadow-sm border rounded">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
-                    <thead class="table-dark text-white fw-bold">
-                        <tr class="text-center">
-                            <th style="width: 80px;">Log ID</th>
-                            <th style="width: 130px;">Account User</th>
-                            <th style="width: 140px;">Operation Action</th>
-                            <th class="text-start">Activity Execution Specifications Trace Description</th>
-                            <th style="width: 200px;">Timeline Timestamp Log</th>
+    <!-- Logs Table -->
+    <div class="saas-card p-0 overflow-hidden">
+        <div class="table-responsive">
+            <table class="saas-table mb-0 text-center">
+                <thead>
+                    <tr>
+                        <th style="width: 100px; text-align: center;">Log ID</th>
+                        <th style="width: 180px; text-align: center;">Account User</th>
+                        <th style="width: 180px; text-align: center;">Operation Action</th>
+                        <th class="text-start">Activity Execution Specifications Trace Description</th>
+                        <th style="width: 220px; text-align: center;">Timeline Timestamp Log</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any()) {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted font-monospace">
+                                <i class="fa-solid fa-triangle-exclamation text-warning fs-3 mb-2 d-block"></i>
+                                <span>No tracked security operations logs match current criteria context parameters.</span>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @if (!Model.Any()) {
-                            <tr><td colspan="5" class="text-center py-4 text-muted font-monospace">No tracked security operations logs match current criteria context parameters.</td></tr>
-                        }
-                        @foreach (var log in Model)
-                        {
-                            string badgeClass = "bg-secondary";
-                            if (log["Action"].ToString() == "LOGIN") badgeClass = "bg-primary";
-                            if (log["Action"].ToString() == "ADD_ROW") badgeClass = "bg-success";
-                            if (log["Action"].ToString() == "EDIT") badgeClass = "bg-info text-dark";
-                            if (log["Action"].ToString() == "DELETE") badgeClass = "bg-danger";
-                            if (log["Action"].ToString() == "PERMISSIONS") badgeClass = "bg-warning text-dark";
-                            if (log["Action"].ToString() == "PASSWORD_CHANGE" || log["Action"].ToString() == "PASSWORD_RESET") badgeClass = "bg-dark text-warning";
+                    }
+                    @foreach (var log in Model)
+                    {
+                        string badgeStyle = "background-color: #E2E8F0; color: #475569;";
+                        string logAction = log["Action"]?.ToString() ?? "LOG";
+                        if (logAction == "LOGIN") badgeStyle = "background-color: #EEF2FF; color: #4338CA;";
+                        else if (logAction == "ADD_ROW") badgeStyle = "background-color: #ECFDF5; color: #047857;";
+                        else if (logAction == "EDIT") badgeStyle = "background-color: #FFFBEB; color: #D97706;";
+                        else if (logAction == "DELETE") badgeStyle = "background-color: #FEF2F2; color: #DC2626;";
+                        else if (logAction == "PERMISSIONS") badgeStyle = "background-color: #FDF2F8; color: #BE185D;";
+                        else if (logAction.Contains("PASSWORD")) badgeStyle = "background-color: #F1F5F9; color: #0F172A;";
 
-                            <tr class="text-center">
-                                <td class="text-secondary fw-bold">#@log["Id"]</td>
-                                <td class="fw-bold text-dark text-uppercase">👤 @log["User"]</td>
-                                <td><span class="badge w-100 py-2 @badgeClass" style="font-size:0.72rem; letter-spacing:0.3px;">@log["Action"]</span></td>
-                                <td class="text-start text-muted-emphasis fw-semibold px-3" style="font-size:0.82rem;">@log["Desc"]</td>
-                                <td class="text-secondary font-monospace fw-medium"><i class="fa-regular fa-calendar-check text-muted me-1"></i> @log["Time"]</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                        <tr>
+                            <td class="text-secondary fw-bold">#@log["Id"]</td>
+                            <td class="fw-bold text-dark text-uppercase">👤 @log["User"]</td>
+                            <td>
+                                <span class="brand-badge" style="@badgeStyle font-size: 0.72rem; width: 130px; justify-content: center;">@logAction</span>
+                            </td>
+                            <td class="text-start text-dark fw-medium px-3" style="font-size:0.85rem;">@log["Desc"]</td>
+                            <td class="text-secondary font-monospace fw-medium">
+                                <i class="fa-regular fa-clock text-muted me-1"></i> @log["Time"]
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
