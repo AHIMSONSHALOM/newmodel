@@ -102,6 +102,278 @@ namespace ProductHub_MVC.Controllers
         }
 
         [HttpGet]
+        public IActionResult Register()
+        {
+            if (HttpContext.Session.GetString("UserSession") != null) return RedirectToAction("Index", "Product");
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Register(string username, string mobileNumber, string email)
+        {
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(mobileNumber) || string.IsNullOrWhiteSpace(email))
+            {
+                TempData["Error"] = "❌ All fields are required for registration.";
+                return View();
+            }
+
+            string normalizedUser = username.Trim();
+            string normalizedMobile = mobileNumber.Trim();
+            string mobileDigits = new string(normalizedMobile.Where(char.IsDigit).ToArray());
+            if (mobileDigits.Length > 10) mobileDigits = mobileDigits.Substring(mobileDigits.Length - 10);
+
+            // Check if username already exists in database
+            using (var conn = _context.CreateConnection())
+            {
+                string checkUser = "SELECT COUNT(1) FROM T_USERS WHERE F_USERNAME = @User";
+                using (var checkCmd = new SqlCommand(checkUser, (SqlConnection)conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@User", normalizedUser);
+                    conn.Open();
+                    if ((int)checkCmd.ExecuteScalar() > 0)
+                    {
+                        TempData["Error"] = "❌ Username is already taken. Please choose another one.";
+                        return View();
+                    }
+                }
+            }
+
+            string generatedOtp = new Random().Next(100000, 999999).ToString();
+            DateTime expiry = DateTime.Now.AddMinutes(5);
+
+            // Store in Session for verification
+            HttpContext.Session.SetString("Pending_Username", normalizedUser);
+            HttpContext.Session.SetString("Pending_Mobile", mobileDigits);
+            HttpContext.Session.SetString("Pending_Email", email.Trim());
+            HttpContext.Session.SetString("Pending_Otp", generatedOtp);
+            HttpContext.Session.SetString("Pending_OtpExpiry", expiry.ToString());
+
+            bool otpDispatched = false;
+
+            // 1. Try SMS via Fast2SMS
+            if (!string.IsNullOrWhiteSpace(_fast2SmsApiKey) && _fast2SmsApiKey != "PASTE_FAST2SMS_API_KEY_HERE")
+            {
+                try
+                {
+                    var sendRequest = new HttpRequestMessage(HttpMethod.Post, "https://www.fast2sms.com/dev/bulkV2");
+                    sendRequest.Headers.Add("authorization", _fast2SmsApiKey);
+                    sendRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                    {
+                        { "route", _fast2SmsRoute },
+                        { "message", $"Your ProductHub registration OTP is {generatedOtp}. Valid for 5 minutes." },
+                        { "language", "english" },
+                        { "flash", "0" },
+                        { "numbers", mobileDigits }
+                    });
+
+                    var response = await _httpClient.SendAsync(sendRequest);
+                    string apiOutput = await response.Content.ReadAsStringAsync();
+                    if (response.IsSuccessStatusCode && !apiOutput.Contains("\"return\":false", StringComparison.OrdinalIgnoreCase))
+                    {
+                        otpDispatched = true;
+                        TempData["Success"] = "✉️ Registration OTP sent successfully to your mobile number.";
+                    }
+                }
+                catch { }
+            }
+
+            // 2. Try Email via SMTP
+            if (!otpDispatched && !string.IsNullOrWhiteSpace(email))
+            {
+                try
+                {
+                    string senderEmail = "tpass2829@gmail.com"; 
+                    string senderPassword = "uozwlvrkykjzgjmj"; 
+                    using (MailMessage mail = new MailMessage()) { 
+                        mail.From = new MailAddress(senderEmail); 
+                        mail.To.Add(email.Trim()); 
+                        mail.Subject = "🔑 ProductHub Registration OTP"; 
+                        mail.Body = $"Hello {normalizedUser},\n\nYour OTP code for verification is: {generatedOtp}\n\nThis OTP is valid for 5 minutes."; 
+                        
+                        using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { 
+                            smtp.EnableSsl = true; 
+                            smtp.UseDefaultCredentials = false; 
+                            smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
+                            await smtp.SendMailAsync(mail); 
+                        } 
+                    }
+                    otpDispatched = true;
+                    TempData["Success"] = $"✉️ Registration OTP sent successfully to your email: {email}";
+                }
+                catch { }
+            }
+
+            // 3. Fallback to Screen/UI Alert
+            if (!otpDispatched)
+            {
+                TempData["Success"] = $"⚠️ OTP Generated (Demo Mode): {generatedOtp} (Valid for 5 minutes).";
+            }
+
+            // Log activity step into history table
+            LogActivity(normalizedUser, "REGISTER_OTP_REQUEST", $"Requested a registration authentication OTP code for mobile: {mobileDigits}.");
+
+            return RedirectToAction(nameof(VerifyRegisterOtp));
+        }
+
+        [HttpGet]
+        public IActionResult VerifyRegisterOtp()
+        {
+            if (HttpContext.Session.GetString("Pending_Username") == null) return RedirectToAction(nameof(Register));
+            ViewBag.Username = HttpContext.Session.GetString("Pending_Username");
+            ViewBag.MobileNum = HttpContext.Session.GetString("Pending_Mobile");
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> VerifyRegisterOtp(string otpCode)
+        {
+            string pendingUser = HttpContext.Session.GetString("Pending_Username") ?? "";
+            string pendingMobile = HttpContext.Session.GetString("Pending_Mobile") ?? "";
+            string pendingEmail = HttpContext.Session.GetString("Pending_Email") ?? "";
+            string expectedOtp = HttpContext.Session.GetString("Pending_Otp") ?? "";
+            string expiryStr = HttpContext.Session.GetString("Pending_OtpExpiry") ?? "";
+
+            if (string.IsNullOrEmpty(pendingUser) || string.IsNullOrEmpty(expectedOtp))
+            {
+                return RedirectToAction(nameof(Register));
+            }
+
+            if (string.IsNullOrWhiteSpace(otpCode) || otpCode.Trim() != expectedOtp)
+            {
+                TempData["Error"] = "❌ Invalid OTP code. Please try again.";
+                ViewBag.Username = pendingUser;
+                ViewBag.MobileNum = pendingMobile;
+                return View();
+            }
+
+            if (!string.IsNullOrEmpty(expiryStr) && DateTime.TryParse(expiryStr, out DateTime expiryTime) && DateTime.Now > expiryTime)
+            {
+                TempData["Error"] = "❌ OTP code has expired. Please register again.";
+                return RedirectToAction(nameof(Register));
+            }
+
+            // Generate secure random password
+            string autoGeneratedPassword = GenerateRandomPassword(8);
+
+            // Insert new user into database
+            using (var conn = _context.CreateConnection())
+            {
+                string query = @"INSERT INTO T_USERS (
+                                    F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
+                                    F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                    F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
+                                    F_RESTRICTED_BRAND
+                                 ) VALUES (
+                                    @U, @P, @M, @E, 0, 
+                                    0, 0, 0, 0, 0, 0,
+                                    1, 1, 1, 1, 0, 0,
+                                    'ALL'
+                                 )";
+                using (var cmd = new SqlCommand(query, (SqlConnection)conn))
+                {
+                    cmd.Parameters.AddWithValue("@U", pendingUser);
+                    cmd.Parameters.AddWithValue("@P", autoGeneratedPassword);
+                    cmd.Parameters.AddWithValue("@M", pendingMobile);
+                    cmd.Parameters.AddWithValue("@E", (object)pendingEmail ?? DBNull.Value);
+                    conn.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+            // Log activity step into history table
+            LogActivity(pendingUser, "USER_REGISTERED", "Completed public registration OTP verification and created new user account.");
+
+            // Dispatch username and auto-generated password via Email/SMS
+            bool notificationDispatched = await SendCredentialsToNewUser(pendingUser, autoGeneratedPassword, pendingEmail, pendingMobile);
+
+            // Clean up registration session values
+            HttpContext.Session.Remove("Pending_Username");
+            HttpContext.Session.Remove("Pending_Mobile");
+            HttpContext.Session.Remove("Pending_Email");
+            HttpContext.Session.Remove("Pending_Otp");
+            HttpContext.Session.Remove("Pending_OtpExpiry");
+
+            if (notificationDispatched)
+            {
+                TempData["Success"] = "✅ Registration successful! Your login credentials have been sent to your email/mobile.";
+            }
+            else
+            {
+                TempData["Success"] = $"✅ Registration successful! Account: {pendingUser}, Password: {autoGeneratedPassword} (Please note this password to login).";
+            }
+
+            return RedirectToAction(nameof(Login));
+        }
+
+        private string GenerateRandomPassword(int length = 8)
+        {
+            const string validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+            Random random = new Random();
+            return new string(Enumerable.Repeat(validChars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+        }
+
+        private async Task<bool> SendCredentialsToNewUser(string username, string password, string email, string mobile)
+        {
+            string messageText = $"Welcome to ProductHub! Your username is: {username} and your generated password is: {password}";
+            bool smsSent = false;
+            bool emailSent = false;
+
+            // 1. Try SMS via Fast2SMS
+            if (!string.IsNullOrWhiteSpace(_fast2SmsApiKey) && _fast2SmsApiKey != "PASTE_FAST2SMS_API_KEY_HERE" && !string.IsNullOrWhiteSpace(mobile))
+            {
+                try
+                {
+                    var sendRequest = new HttpRequestMessage(HttpMethod.Post, "https://www.fast2sms.com/dev/bulkV2");
+                    sendRequest.Headers.Add("authorization", _fast2SmsApiKey);
+                    sendRequest.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                    {
+                        { "route", _fast2SmsRoute },
+                        { "message", messageText },
+                        { "language", "english" },
+                        { "flash", "0" },
+                        { "numbers", mobile }
+                    });
+
+                    var response = await _httpClient.SendAsync(sendRequest);
+                    string apiOutput = await response.Content.ReadAsStringAsync();
+                    if (response.IsSuccessStatusCode && !apiOutput.Contains("\"return\":false", StringComparison.OrdinalIgnoreCase))
+                    {
+                        smsSent = true;
+                    }
+                }
+                catch { }
+            }
+
+            // 2. Try Email via SMTP
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                try
+                {
+                    string senderEmail = "tpass2829@gmail.com"; 
+                    string senderPassword = "uozwlvrkykjzgjmj"; 
+                    using (MailMessage mail = new MailMessage()) { 
+                        mail.From = new MailAddress(senderEmail); 
+                        mail.To.Add(email.Trim()); 
+                        mail.Subject = "🎉 Welcome to ProductHub - Account Created Successfully"; 
+                        mail.Body = $"Hello {username},\n\nYour account has been created successfully!\n\nHere are your login credentials:\nUsername: {username}\nPassword: {password}\n\nPlease login using these credentials."; 
+                        
+                        using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { 
+                            smtp.EnableSsl = true; 
+                            smtp.UseDefaultCredentials = false; 
+                            smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
+                            await smtp.SendMailAsync(mail); 
+                        } 
+                    }
+                    emailSent = true;
+                }
+                catch { }
+            }
+
+            return smsSent || emailSent;
+        }
+
+        [HttpGet]
         public IActionResult ForgotPassword() => View();
 
         [HttpPost]
