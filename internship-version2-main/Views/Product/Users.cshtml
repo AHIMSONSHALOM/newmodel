@@ -19,6 +19,51 @@
         </div>
     </div>
 
+    @{
+        var pendingUsers = Model.Where(u => Convert.ToInt32(u["IsApproved"]) == 0).ToList();
+    }
+
+    @if (pendingUsers.Count > 0)
+    {
+        <div class="saas-card mx-1 mb-3 shadow-sm border border-warning" style="background-color: #fffbeb; border-radius: 12px; padding: 20px;">
+            <h4 class="fw-bold text-warning mb-2" style="font-size: 1.1rem;"><i class="fa-solid fa-user-shield me-2"></i>Pending Access Requests (@pendingUsers.Count)</h4>
+            <p class="text-secondary small mb-3">The following users registered via self-sign-up or Google SSO and require manual administrator approval to enter the dashboard.</p>
+            
+            <div class="row g-3">
+                @foreach (var p in pendingUsers)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="p-3 border rounded bg-white shadow-sm d-flex flex-column justify-content-between h-100" style="border-radius: 8px !important;">
+                            <div>
+                                <h5 class="fw-bold text-dark mb-1" style="font-size: 0.95rem;">👤 @p["Name"]</h5>
+                                <div class="text-muted small mb-2">
+                                    <div><strong>Email:</strong> @(string.IsNullOrWhiteSpace(p["EmailAddress"]?.ToString()) ? "Not Set" : p["EmailAddress"])</div>
+                                    <div><strong>Phone:</strong> @(string.IsNullOrWhiteSpace(p["Mobile"]?.ToString()) ? "Not Set" : p["Mobile"])</div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                                <form asp-action="ApproveUser" method="post" class="m-0 flex-grow-1">
+                                    <input type="hidden" name="userId" value="@p["Id"]" />
+                                    <input type="hidden" name="targetName" value="@p["Name"]" />
+                                    <button type="submit" class="btn btn-sm btn-success w-100 fw-bold d-flex justify-content-center align-items-center" style="height: 32px; border-radius: 6px;">
+                                        <i class="fa-solid fa-circle-check me-1"></i> Approve
+                                    </button>
+                                </form>
+                                <form asp-action="RejectUser" method="post" onsubmit="return confirm('Reject and delete this registration request?');" class="m-0 flex-grow-1">
+                                    <input type="hidden" name="userId" value="@p["Id"]" />
+                                    <input type="hidden" name="targetName" value="@p["Name"]" />
+                                    <button type="submit" class="btn btn-sm btn-danger w-100 fw-bold d-flex justify-content-center align-items-center" style="height: 32px; border-radius: 6px;">
+                                        <i class="fa-solid fa-circle-xmark me-1"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     @if (TempData["SuccessMessage"] != null)
     {
         <div class="alert alert-success border-0 shadow-sm p-3 mx-1 mb-0 small fw-bold text-success rounded border-start border-4 border-success d-flex align-items-center alert-dismissible fade show" role="alert" style="border-radius: 12px;">
@@ -47,7 +92,16 @@
                     {
                         <tr>
                             <td class="text-secondary fw-semibold">@u["Id"]</td>
-                            <td class="fw-bold text-dark">👤 @u["Name"]</td>
+                            <td class="fw-bold text-dark text-start ps-3">
+                                👤 @u["Name"]
+                                @if (Convert.ToInt32(u["IsApproved"]) == 0) {
+                                    <span class="badge bg-warning text-dark ms-2" style="border-radius: 4px; font-size: 0.65rem; font-weight: 700; padding: 4px 6px;">PENDING APPROVAL</span>
+                                } else if (Convert.ToInt32(u["IsAdmin"]) == 1) {
+                                    <span class="badge bg-danger text-white ms-2" style="border-radius: 4px; font-size: 0.65rem; font-weight: 700; padding: 4px 6px;">ADMIN</span>
+                                } else {
+                                    <span class="badge bg-success text-white ms-2" style="border-radius: 4px; font-size: 0.65rem; font-weight: 700; padding: 4px 6px;">ACTIVE</span>
+                                }
+                            </td>
                             <td class="fw-semibold text-secondary">@u["Mobile"]</td>
                             <td class="fw-semibold text-secondary">
                                 @if (!string.IsNullOrWhiteSpace(u["EmailAddress"]?.ToString())) {

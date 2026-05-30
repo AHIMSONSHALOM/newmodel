@@ -10,12 +10,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
     <style>
         :root {
-            --google-blue: #1a73e8;
-            --google-blue-hover: #1557b0;
-            --text-dark: #202124;
+            --google-blue: #0b57d0;
+            --google-blue-hover: #0842a0;
+            --text-dark: #1f1f1f;
             --text-muted: #5f6368;
-            --border-color: #dadce0;
+            --border-color: #c7c7c7;
             --bg-color: #ffffff;
+            --avatar-blue: #0f9d58;
         }
 
         body {
@@ -27,58 +28,143 @@
             justify-content: center;
             min-height: 100vh;
             color: var(--text-dark);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .outer-wrapper {
+            width: 100%;
+            max-width: 850px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 24px;
         }
 
         .auth-container {
             background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+            border-radius: 28px; /* Curved corners matching Google's modern desktop container */
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
             width: 100%;
-            max-width: 450px;
-            padding: 40px;
             box-sizing: border-box;
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr; /* 2-column split! Left 45%, Right 55% */
+            gap: 48px;
+            min-height: 400px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
+        }
+
+        /* Left Side Context Pane */
+        .context-pane {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            box-sizing: border-box;
         }
 
         .google-logo {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 16px;
+            margin-bottom: 24px;
         }
 
         .google-logo svg {
             width: 75px;
-            height: 24px;
+            height: 28px;
         }
 
         .header-title {
-            font-size: 24px;
+            font-size: 36px; /* High-end Google light font headers */
             font-weight: 400;
-            text-align: center;
-            margin: 0 0 8px 0;
+            line-height: 1.25;
             color: var(--text-dark);
+            margin: 0 0 16px 0;
+            letter-spacing: -0.5px;
+            text-align: left;
         }
 
         .header-subtitle {
             font-size: 16px;
-            text-align: center;
+            line-height: 1.5;
+            color: var(--text-muted);
             margin: 0 0 24px 0;
+            text-align: left;
+        }
+
+        /* Identity Badges / Account Pills */
+        .identity-badge {
+            display: flex;
+            align-items: center;
+            padding: 6px 14px 6px 6px;
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 100px;
+            gap: 8px;
+            margin-top: 8px;
+            cursor: pointer;
+            transition: background 0.1s ease;
+        }
+
+        .identity-badge:hover {
+            background: #f8f9fa;
+        }
+
+        .badge-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--avatar-blue);
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+        }
+
+        .badge-email {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .badge-dropdown {
+            width: 14px;
+            height: 14px;
             color: var(--text-muted);
         }
 
+        /* Right Side Content/Interaction Pane */
+        .content-pane {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        /* sliding panels */
+        .panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+
+        .panel-hidden {
+            display: none !important;
+        }
+
         .account-list {
-            margin-bottom: 24px;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid #e0e0e0;
+            margin-bottom: 20px;
         }
 
         .account-item {
             display: flex;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-color);
+            padding: 14px 0;
+            border-bottom: 1px solid #e0e0e0;
             cursor: pointer;
             transition: background-color 0.15s ease;
         }
@@ -91,19 +177,19 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background-color: #15cda8;
+            background-color: #4285F4;
             color: #ffffff;
             font-weight: 500;
             font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 12px;
+            margin-right: 16px;
             text-transform: uppercase;
         }
 
-        .avatar.blue {
-            background-color: var(--google-blue);
+        .avatar.teal {
+            background-color: #008080;
         }
 
         .avatar-another {
@@ -114,7 +200,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-right: 12px;
+            margin-right: 16px;
             background-color: transparent;
             color: var(--text-muted);
         }
@@ -126,7 +212,7 @@
         .account-name {
             font-size: 14px;
             font-weight: 500;
-            margin: 0;
+            margin: 0 0 2px 0;
         }
 
         .account-email {
@@ -135,38 +221,23 @@
             margin: 0;
         }
 
-        .footer-notice {
-            font-size: 12px;
-            color: var(--text-muted);
-            line-height: 1.5;
-            margin-top: 28px;
-        }
-
-        /* sliding panels */
-        .panel {
-            transition: opacity 0.2s ease;
-        }
-
-        .panel-hidden {
-            display: none !important;
-            opacity: 0;
-        }
-
-        /* custom login view */
+        /* Outline dynamic inputs */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             position: relative;
+            width: 100%;
         }
 
         .form-input {
             width: 100%;
-            padding: 14px 12px;
+            padding: 16px 14px;
             border: 1px solid var(--border-color);
             border-radius: 4px;
             font-size: 16px;
             box-sizing: border-box;
             outline: none;
-            transition: border-color 0.15s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            background: transparent;
         }
 
         .form-input:focus {
@@ -180,7 +251,7 @@
             top: 50%;
             transform: translateY(-50%);
             background: var(--bg-color);
-            padding: 0 4px;
+            padding: 0 6px;
             color: var(--text-muted);
             transition: 0.15s ease;
             pointer-events: none;
@@ -198,7 +269,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 32px;
+            margin-top: 24px;
+            width: 100%;
         }
 
         .btn-link {
@@ -208,60 +280,66 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            padding: 0;
+            padding: 8px 12px;
             text-decoration: none;
-            transition: color 0.15s ease;
+            border-radius: 4px;
+            transition: background 0.15s ease;
         }
 
         .btn-link:hover {
-            color: var(--google-blue-hover);
+            background: rgba(11, 87, 208, 0.04);
         }
 
         .btn-submit {
             background-color: var(--google-blue);
             color: #ffffff;
             border: none;
-            border-radius: 4px;
-            padding: 10px 24px;
+            border-radius: 100px; /* Modern rounded pill button shape! */
+            padding: 12px 28px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            transition: background-color 0.15s ease;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         .btn-submit:hover {
             background-color: var(--google-blue-hover);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
         }
 
         .alert-error {
             background-color: #fde8e8;
             border: 1px solid #f8b4b4;
             color: #9b1c1c;
-            padding: 10px 12px;
-            border-radius: 4px;
+            padding: 12px 16px;
+            border-radius: 8px;
             font-size: 13px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             display: none;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .alert-demo-info {
             background-color: #eef2ff;
             border: 1px solid #c7d2fe;
             color: #3730a3;
-            padding: 12px;
-            border-radius: 6px;
+            padding: 14px;
+            border-radius: 8px;
             font-size: 13px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             display: none;
             flex-direction: column;
             gap: 4px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .spinner {
-            border: 2px solid rgba(26, 115, 232, 0.2);
+            border: 2px solid rgba(11, 87, 208, 0.2);
             border-top: 2px solid var(--google-blue);
             border-radius: 50%;
             width: 16px;
@@ -272,141 +350,223 @@
             margin-right: 8px;
         }
 
-        .device-prompt-icon {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
+        /* Request submitted details list */
+        .security-list {
+            padding-left: 20px;
+            margin: 16px 0 24px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
         }
 
-        .device-prompt-icon svg {
-            width: 64px;
-            height: 64px;
-            color: var(--google-blue);
+        .security-list li {
+            margin-bottom: 8px;
+        }
+
+        /* Page Footer */
+        .page-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #747775;
+            padding: 0 8px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .footer-links a {
+            color: #747775;
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-dark);
+        }
+
+        .lang-selector {
+            background: transparent;
+            border: none;
+            color: #747775;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+
+        @@keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         @@keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Responsive */
+        @@media (max-width: 768px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+                gap: 24px;
+                padding: 30px;
+            }
+            .header-title {
+                font-size: 28px;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <div class="auth-container">
-        <div class="google-logo">
-            <svg viewBox="0 0 74 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9.24 17.8c-1.3 0-2.5-.3-3.6-1-.9-.7-1.6-1.6-2.1-2.7S2.8 11.8 2.8 10c0-1.8.3-3.4.9-4.5.6-1.1 1.3-2 2.3-2.7 1-1 2.2-1.3 3.5-1.3 1.6 0 3 .5 4 1.5 1.1 1 1.6 2.4 1.6 4.3v1h-8.3c0 .9.3 1.7.9 2.3s1.3.9 2.2.9c.8 0 1.5-.2 2.1-.6s.9-.9 1.1-1.6l2.1.8c-.4 1.1-1.1 2-2.1 2.7-1.1.7-2.3 1.1-3.7 1.1zm2.3-9.5c0-.8-.3-1.4-.7-1.9s-1.1-.7-1.9-.7c-.7 0-1.3.2-1.7.7s-.7 1.1-.8 1.9h5.1zM28 17.8c-1.3 0-2.4-.3-3.4-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7c1-.7 2.1-1 3.4-1s2.4.3 3.4 1 1.7 1.6 2.2 2.7.8 2.3.8 3.7-.3 2.6-.8 3.7-1.2 2-2.2 2.7c-1 .7-2.1 1-3.4 1zm0-2.1c.8 0 1.5-.3 2-.9s.8-1.4.8-2.4-.3-1.8-.8-2.4-1.2-.9-2-.9-1.5.3-2 .9-.8 1.4-.8 2.4.3 1.8.8 2.4 1.2.9 2 .9zm14 2.1c-1.3 0-2.4-.3-3.4-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7c1-.7 2.1-1 3.4-1s2.4.3 3.4 1 1.7 1.6 2.2 2.7.8 2.3.8 3.7-.3 2.6-.8 3.7-1.2 2-2.2 2.7c-1 .7-2.1 1-3.4 1zm0-2.1c.8 0 1.5-.3 2-.9s.8-1.4.8-2.4-.3-1.8-.8-2.4-1.2-.9-2-.9-1.5.3-2 .9-.8 1.4-.8 2.4.3 1.8.8 2.4 1.2.9 2 .9zM55.24 22.4c-1.1 0-2.1-.2-3-.7s-1.5-1.1-1.9-2l2-1c.3.5.7.9 1.2 1.2s1.1.4 1.8.4c1 0 1.8-.3 2.3-.9s.7-1.5.7-2.7V15.5h-.1c-.4.5-.9 1-1.6 1.3-.7.3-1.5.5-2.3.5-1.2 0-2.3-.3-3.3-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7 2.1-1 3.3-1c.8 0 1.6.2 2.3.5.7.3 1.2.8 1.6 1.3h.1V1.8h2.3v13.5c0 1.8-.5 3.3-1.4 4.4-.9 1.1-2.2 1.7-4 1.7zm.1-8c.8 0 1.4-.3 1.9-.9s.7-1.4.7-2.4-.2-1.8-.7-2.4-1.1-.9-1.9-.9-1.4.3-1.9.9-.7 1.4-.7 2.4.2 1.8.7 2.4 1.1.9 1.9.9zM65.8 17.5h-2.3V0h2.3v17.5zm7 0h-2.3V0h2.3v17.5z" fill="#5F6368"/>
-                <path d="M9.24 9c-.1 0-.2 0-.3-.1L.94 2.8C2.56 1 4.8 0 7.4 0c2.3 0 4.3.7 5.9 2 1.6 1.3 2.7 3.1 3.2 5.2l-2.4.7c-.4-1.4-1.1-2.5-2.2-3.3-1.1-.8-2.5-1.2-4.1-1.2-1.9 0-3.5.6-4.7 1.8S1.24 8.2 1.24 10.3" fill="#4285F4"/>
-            </svg>
-        </div>
-
-        <!-- ERROR MESSAGE ALERT -->
-        <div id="error-alert" class="alert-error">
-            <span style="font-weight: bold;">⚠️</span>
-            <span id="error-message">Error signing in. Please try again.</span>
-        </div>
-
-        <!-- DEMO INFO NOTICE -->
-        <div id="demo-notice" class="alert-demo-info">
-            <span style="font-weight: 700; font-size: 14px;">🛠️ Offline Demo Fallback OTP</span>
-            <span style="font-size: 13px; font-weight: 500; margin-top: 2px;">
-                Gmail SMTP dispatch skipped or failed. Use this verification code:
-                <strong id="demo-otp-code" style="font-size: 15px; color: var(--google-blue); text-decoration: underline; margin-left: 4px;">123456</strong>
-            </span>
-        </div>
-
-        <!-- PANEL 1: ACCOUNT CHOOSER -->
-        <div id="panel-chooser" class="panel">
-            <h1 class="header-title">Choose an account</h1>
-            <p class="header-subtitle">to continue to ProductHub</p>
-
-            <div class="account-list">
-                <!-- Pre-defined Google account -->
-                <div class="account-item" onclick="triggerOtpRequest('ahimsonshalom2003@gmail.com', 'Ahim Shalom')">
-                    <div class="avatar blue">A</div>
-                    <div class="account-details">
-                        <p class="account-name">Ahim Shalom</p>
-                        <p class="account-email">ahimsonshalom2003@gmail.com</p>
-                    </div>
+    <div class="outer-wrapper">
+        <div class="auth-container">
+            <!-- Left Side Context Pane -->
+            <div class="context-pane">
+                <div class="google-logo">
+                    <svg viewBox="0 0 74 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9.24 17.8c-1.3 0-2.5-.3-3.6-1-.9-.7-1.6-1.6-2.1-2.7S2.8 11.8 2.8 10c0-1.8.3-3.4.9-4.5.6-1.1 1.3-2 2.3-2.7 1-1 2.2-1.3 3.5-1.3 1.6 0 3 .5 4 1.5 1.1 1 1.6 2.4 1.6 4.3v1h-8.3c0 .9.3 1.7.9 2.3s1.3.9 2.2.9c.8 0 1.5-.2 2.1-.6s.9-.9 1.1-1.6l2.1.8c-.4 1.1-1.1 2-2.1 2.7-1.1.7-2.3 1.1-3.7 1.1zm2.3-9.5c0-.8-.3-1.4-.7-1.9s-1.1-.7-1.9-.7c-.7 0-1.3.2-1.7.7s-.7 1.1-.8 1.9h5.1zM28 17.8c-1.3 0-2.4-.3-3.4-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7c1-.7 2.1-1 3.4-1s2.4.3 3.4 1 1.7 1.6 2.2 2.7.8 2.3.8 3.7-.3 2.6-.8 3.7-1.2 2-2.2 2.7c-1 .7-2.1 1-3.4 1zm0-2.1c.8 0 1.5-.3 2-.9s.8-1.4.8-2.4-.3-1.8-.8-2.4-1.2-.9-2-.9-1.5.3-2 .9-.8 1.4-.8 2.4.3 1.8.8 2.4 1.2.9 2 .9zm14 2.1c-1.3 0-2.4-.3-3.4-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7c1-.7 2.1-1 3.4-1s2.4.3 3.4 1 1.7 1.6 2.2 2.7.8 2.3.8 3.7-.3 2.6-.8 3.7-1.2 2-2.2 2.7c-1 .7-2.1 1-3.4 1zm0-2.1c.8 0 1.5-.3 2-.9s.8-1.4.8-2.4-.3-1.8-.8-2.4-1.2-.9-2-.9-1.5.3-2 .9-.8 1.4-.8 2.4.3 1.8.8 2.4 1.2.9 2 .9zM55.24 22.4c-1.1 0-2.1-.2-3-.7s-1.5-1.1-1.9-2l2-1c.3.5.7.9 1.2 1.2s1.1.4 1.8.4c1 0 1.8-.3 2.3-.9s.7-1.5.7-2.7V15.5h-.1c-.4.5-.9 1-1.6 1.3-.7.3-1.5.5-2.3.5-1.2 0-2.3-.3-3.3-1s-1.7-1.6-2.2-2.7-.8-2.3-.8-3.7.3-2.6.8-3.7 1.2-2 2.2-2.7 2.1-1 3.3-1c.8 0 1.6.2 2.3.5.7.3 1.2.8 1.6 1.3h.1V1.8h2.3v13.5c0 1.8-.5 3.3-1.4 4.4-.9 1.1-2.2 1.7-4 1.7zm.1-8c.8 0 1.4-.3 1.9-.9s.7-1.4.7-2.4-.2-1.8-.7-2.4-1.1-.9-1.9-.9-1.4.3-1.9.9-.7 1.4-.7 2.4.2 1.8.7 2.4 1.1.9 1.9.9zM65.8 17.5h-2.3V0h2.3v17.5zm7 0h-2.3V0h2.3v17.5z" fill="#5F6368"/>
+                        <path d="M9.24 9c-.1 0-.2 0-.3-.1L.94 2.8C2.56 1 4.8 0 7.4 0c2.3 0 4.3.7 5.9 2 1.6 1.3 2.7 3.1 3.2 5.2l-2.4.7c-.4-1.4-1.1-2.5-2.2-3.3-1.1-.8-2.5-1.2-4.1-1.2-1.9 0-3.5.6-4.7 1.8S1.24 8.2 1.24 10.3" fill="#4285F4"/>
+                    </svg>
                 </div>
+                
+                <!-- Dynamic Header Text mapping directly to current panels -->
+                <h1 id="ctx-title" class="header-title">Choose an account</h1>
+                <p id="ctx-subtitle" class="header-subtitle">to continue to ProductHub</p>
 
-                <!-- Another pre-defined account option for testing -->
-                <div class="account-item" onclick="triggerOtpRequest('demo.user@gmail.com', 'Demo User')">
-                    <div class="avatar">D</div>
-                    <div class="account-details">
-                        <p class="account-name">Demo User</p>
-                        <p class="account-email">demo.user@gmail.com</p>
-                    </div>
-                </div>
-
-                <!-- Use Another Account Option -->
-                <div class="account-item" onclick="showCustomPanel()">
-                    <div class="avatar-another">
-                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                        </svg>
-                    </div>
-                    <div class="account-details">
-                        <p class="account-name" style="color: var(--google-blue);">Use another account</p>
-                    </div>
+                <!-- Dynamic Account Badge Pill displaying active user context -->
+                <div id="ctx-badge" class="identity-badge panel-hidden" onclick="showChooserPanel()">
+                    <div id="badge-letter" class="badge-avatar">T</div>
+                    <span id="badge-email-txt" class="badge-email">tpass2829@gmail.com</span>
+                    <svg class="badge-dropdown" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                        <path d="M7 10l5 5 5-5z"/>
+                    </svg>
                 </div>
             </div>
 
-            <p class="footer-notice">
-                To continue, Google will share your name, email address, language preference, and profile picture with ProductHub Console.
-            </p>
-        </div>
-
-        <!-- PANEL 2: CUSTOM ACCOUNT FORM -->
-        <div id="panel-custom" class="panel panel-hidden">
-            <h1 class="header-title">Sign in</h1>
-            <p class="header-subtitle">with your Google Account</p>
-
-            <form id="custom-auth-form" onsubmit="handleCustomSubmit(e => e.preventDefault())">
-                <div class="form-group">
-                    <input type="text" id="custom-name" class="form-input" placeholder=" " required autocomplete="off" />
-                    <label class="form-label" for="custom-name">First and Last Name</label>
+            <!-- Right Side Interaction Pane -->
+            <div class="content-pane">
+                
+                <!-- ERROR MESSAGE ALERT -->
+                <div id="error-alert" class="alert-error">
+                    <span style="font-weight: bold;">⚠️</span>
+                    <span id="error-message">Error signing in. Please try again.</span>
                 </div>
 
-                <div class="form-group">
-                    <input type="email" id="custom-email" class="form-input" placeholder=" " required autocomplete="off" />
-                    <label class="form-label" for="custom-email">Google Email Address</label>
+                <!-- OFFLINE DEMO NOTICE -->
+                <div id="demo-notice" class="alert-demo-info">
+                    <span style="font-weight: 700; font-size: 13px;">🛠️ Offline Demo Fallback OTP</span>
+                    <span style="font-size: 12px; margin-top: 2px;">
+                        Gmail SMTP dispatch skipped/failed. Use code:
+                        <strong id="demo-otp-code" style="font-size: 14px; color: var(--google-blue); text-decoration: underline; margin-left: 4px;">123456</strong>
+                    </span>
                 </div>
 
-                <div class="btn-group">
-                    <button type="button" class="btn-link" onclick="showChooserPanel()">Back to chooser</button>
-                    <button type="button" id="submit-btn" class="btn-submit" onclick="handleCustomSubmit()">
-                        <span id="btn-text">Next</span>
-                    </button>
-                </div>
-            </form>
-        </div>
+                <!-- PANEL 1: ACCOUNT CHOOSER -->
+                <div id="panel-chooser" class="panel">
+                    <div class="account-list">
+                        <!-- Default testing accounts -->
+                        <div class="account-item" onclick="triggerOtpRequest('ahimsonshalom2003@gmail.com', 'Ahim Shalom')">
+                            <div class="avatar">A</div>
+                            <div class="account-details">
+                                <p class="account-name">Ahim Shalom</p>
+                                <p class="account-email">ahimsonshalom2003@gmail.com</p>
+                            </div>
+                        </div>
 
-        <!-- PANEL 3: 2-STEP VERIFICATION -->
-        <div id="panel-verification" class="panel panel-hidden">
-            <div class="device-prompt-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 6c1.4 0 2.5 1.1 2.5 2.5S13.4 12 12 12s-2.5-1.1-2.5-2.5S10.6 7 12 7zm0 13c-2.7 0-5.18-1.58-6.19-4 .03-.99 2.01-1.7 4.19-1.7.53 0 1.14.07 1.7.19.14.03.26.11.33.22.44.75.87.99 1.97.99s1.53-.24 1.97-.99c.07-.11.19-.19.33-.22.56-.12 1.17-.19 1.7-.19 2.18 0 4.16.71 4.19 1.7-1.01 2.42-3.49 4-6.19 4z"/>
-                </svg>
+                        <div class="account-item" onclick="triggerOtpRequest('demo.user@gmail.com', 'Demo User')">
+                            <div class="avatar teal">D</div>
+                            <div class="account-details">
+                                <p class="account-name">Demo User</p>
+                                <p class="account-email">demo.user@gmail.com</p>
+                            </div>
+                        </div>
+
+                        <!-- Another account selector -->
+                        <div class="account-item" onclick="showCustomPanel()">
+                            <div class="avatar-another">
+                                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                            </div>
+                            <div class="account-details">
+                                <p class="account-name" style="color: var(--google-blue);">Use another account</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANEL 2: CUSTOM ACCOUNT FORM -->
+                <div id="panel-custom" class="panel panel-hidden">
+                    <form id="custom-auth-form" onsubmit="e => e.preventDefault()">
+                        <div class="form-group">
+                            <input type="text" id="custom-name" class="form-input" placeholder=" " required autocomplete="off" />
+                            <label class="form-label" for="custom-name">First and Last Name</label>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="email" id="custom-email" class="form-input" placeholder=" " required autocomplete="off" />
+                            <label class="form-label" for="custom-email">Google Email Address</label>
+                        </div>
+
+                        <div class="btn-group">
+                            <button type="button" class="btn-link" onclick="showChooserPanel()">Back</button>
+                            <button type="button" id="submit-btn" class="btn-submit" onclick="handleCustomSubmit()">
+                                <span id="btn-text">Next</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- PANEL 3: 2-STEP VERIFICATION -->
+                <div id="panel-verification" class="panel panel-hidden">
+                    <form id="otp-verify-form" onsubmit="handleOtpSubmit(event)">
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <input type="text" id="verification-code" class="form-input" placeholder=" " required autocomplete="off" maxlength="6" pattern="\d{6}" style="text-align: center; letter-spacing: 6px; font-size: 22px; font-weight: 700;" />
+                            <label class="form-label" for="verification-code" style="left: 50%; transform: translate(-50%, -50%);">Enter 6-digit code</label>
+                        </div>
+
+                        <div class="btn-group">
+                            <button type="button" class="btn-link" onclick="showChooserPanel()">Cancel</button>
+                            <button type="submit" id="verify-submit-btn" class="btn-submit">
+                                <span id="verify-btn-text">Verify</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- PANEL 4: REQUEST SUBMITTED (PENDING APPROVAL) -->
+                <div id="panel-pending" class="panel panel-hidden">
+                    <ul class="security-list">
+                        <li><strong>Safe Verification:</strong> Your identity has been successfully validated via email OTP code authentication channels.</li>
+                        <li><strong>Pending Review:</strong> Access to the inventory dashboard catalog requires a one-time approval activation from the system administrator.</li>
+                        <li><strong>View Access:</strong> Once approved, your account will be granted standard view-only permissions by default.</li>
+                    </ul>
+
+                    <div class="btn-group" style="justify-content: flex-end;">
+                        <button type="button" class="btn-submit" onclick="closePendingFlow()">
+                            <span>Got it</span>
+                        </button>
+                    </div>
+                </div>
+
             </div>
-            <h1 class="header-title">2-Step Verification</h1>
-            <p id="verification-subtitle" class="header-subtitle" style="margin-bottom: 24px;">
-                To help protect your account, Google wants to make sure it's really you. A 6-digit code has been sent to your email.
-            </p>
+        </div>
 
-            <form id="otp-verify-form" onsubmit="handleOtpSubmit(event)">
-                <div class="form-group" style="margin-bottom: 8px;">
-                    <input type="text" id="verification-code" class="form-input" placeholder=" " required autocomplete="off" maxlength="6" pattern="\d{6}" style="text-align: center; letter-spacing: 6px; font-size: 20px; font-weight: 700;" />
-                    <label class="form-label" for="verification-code" style="left: 50%; transform: translate(-50%, -50%);">Enter 6-digit code</label>
-                </div>
-
-                <div class="btn-group">
-                    <button type="button" class="btn-link" onclick="showChooserPanel()">Cancel</button>
-                    <button type="submit" id="verify-submit-btn" class="btn-submit">
-                        <span id="verify-btn-text">Verify</span>
-                    </button>
-                </div>
-            </form>
+        <!-- Footer -->
+        <div class="page-footer">
+            <select class="lang-selector">
+                <option>English (United Kingdom)</option>
+                <option>English (United States)</option>
+            </select>
+            <div class="footer-links">
+                <a href="#">Help</a>
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+            </div>
         </div>
     </div>
 
@@ -415,28 +575,61 @@
         let activeEmail = "";
         let activeName = "";
 
+        function updateLeftPanel(title, subtitle, showBadge = false) {
+            document.getElementById('ctx-title').innerText = title;
+            document.getElementById('ctx-subtitle').innerText = subtitle;
+            
+            const badge = document.getElementById('ctx-badge');
+            if (showBadge && activeEmail) {
+                document.getElementById('badge-letter').innerText = activeEmail.charAt(0).toUpperCase();
+                document.getElementById('badge-email-txt').innerText = activeEmail;
+                badge.classList.remove('panel-hidden');
+            } else {
+                badge.classList.add('panel-hidden');
+            }
+        }
+
         function showCustomPanel() {
             document.getElementById('panel-chooser').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.add('panel-hidden');
+            document.getElementById('panel-pending').classList.add('panel-hidden');
             document.getElementById('panel-custom').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             document.getElementById('demo-notice').style.display = 'none';
+            
+            updateLeftPanel("Sign in", "with your Google Account");
         }
 
         function showChooserPanel() {
             document.getElementById('panel-custom').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.add('panel-hidden');
+            document.getElementById('panel-pending').classList.add('panel-hidden');
             document.getElementById('panel-chooser').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             document.getElementById('demo-notice').style.display = 'none';
+            
+            updateLeftPanel("Choose an account", "to continue to ProductHub");
         }
 
         function showVerificationPanel(email) {
             document.getElementById('panel-chooser').classList.add('panel-hidden');
             document.getElementById('panel-custom').classList.add('panel-hidden');
+            document.getElementById('panel-pending').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.remove('panel-hidden');
-            document.getElementById('verification-subtitle').innerHTML = `To help protect your account, Google wants to make sure it's really you. We sent a 6-digit verification code to <strong style="color: var(--text-dark);">${email}</strong>.`;
             document.getElementById('error-alert').style.display = 'none';
+            
+            updateLeftPanel("2-Step Verification", "To help protect your account, Google wants to make sure it's really you.", true);
+        }
+
+        function showPendingPanel() {
+            document.getElementById('panel-chooser').classList.add('panel-hidden');
+            document.getElementById('panel-custom').classList.add('panel-hidden');
+            document.getElementById('panel-verification').classList.add('panel-hidden');
+            document.getElementById('panel-pending').classList.remove('panel-hidden');
+            document.getElementById('error-alert').style.display = 'none';
+            document.getElementById('demo-notice').style.display = 'none';
+            
+            updateLeftPanel("Request submitted", "Your sign-in request was sent to the ProductHub administrator.", true);
         }
 
         function showError(msg) {
@@ -501,13 +694,11 @@
                 return;
             }
 
-            // Enter loading state
             submitBtn.disabled = true;
             btnText.innerHTML = '<span class="spinner"></span>Next';
 
             triggerOtpRequest(emailVal, nameVal);
             
-            // Restore button state in case of failure (after delay)
             setTimeout(() => {
                 submitBtn.disabled = false;
                 btnText.innerHTML = 'Next';
@@ -550,10 +741,16 @@
                 verifyText.innerHTML = 'Verify';
                 
                 if (data.success) {
-                    if (window.opener) {
-                        window.opener.postMessage('google-signin-success', '*');
+                    if (data.isApproved) {
+                        // User is already approved - redirect to dashboard!
+                        if (window.opener) {
+                            window.opener.postMessage('google-signin-success', '*');
+                        }
+                        window.close();
+                    } else {
+                        // User is pending approval - switch to request submitted panel!
+                        showPendingPanel();
                     }
-                    window.close();
                 } else {
                     showError(data.message || 'Incorrect verification code. Please try again.');
                 }
@@ -564,6 +761,13 @@
                 showError('Network error occurred during OTP verification.');
                 console.error(err);
             });
+        }
+
+        function closePendingFlow() {
+            if (window.opener) {
+                window.opener.postMessage('google-signin-pending', '*');
+            }
+            window.close();
         }
     </script>
 </body>

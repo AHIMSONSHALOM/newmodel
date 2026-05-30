@@ -60,7 +60,7 @@ namespace ProductHub_MVC.Controllers
             using (var connection = _context.CreateConnection())
             {
                 string query = @"SELECT F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
-                                F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE
+                                F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_IS_APPROVED
                                 FROM T_USERS WHERE F_USERNAME = @User AND F_PASSWORD = @Pass";
                 
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
@@ -72,6 +72,13 @@ namespace ProductHub_MVC.Controllers
                     {
                         if (reader.Read())
                         {
+                            int isApproved = Convert.ToInt32(reader["F_IS_APPROVED"]);
+                            if (isApproved == 0)
+                            {
+                                ModelState.AddModelError("", "⏳ Access Pending: Your account is pending administrator approval. Please contact your administrator.");
+                                return View(model);
+                            }
+
                             string userSessionName = reader["F_USERNAME"].ToString() ?? string.Empty;
                             HttpContext.Session.SetString("UserSession", userSessionName);
                             HttpContext.Session.SetInt32("IsAdmin", Convert.ToInt32(reader["F_IS_ADMIN"]));
@@ -208,11 +215,12 @@ namespace ProductHub_MVC.Controllers
 
             string targetUser = "";
             bool userExists = false;
+            int isApprovedVal = 0;
 
             using (var connection = _context.CreateConnection())
             {
                 string checkQuery = @"SELECT F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
-                                    F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE
+                                    F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_IS_APPROVED
                                     FROM T_USERS WHERE F_EMAIL = @Email OR F_USERNAME = @Email";
                 
                 using (var cmd = new SqlCommand(checkQuery, (SqlConnection)connection))
@@ -225,22 +233,26 @@ namespace ProductHub_MVC.Controllers
                         {
                             userExists = true;
                             targetUser = reader["F_USERNAME"].ToString() ?? string.Empty;
+                            isApprovedVal = Convert.ToInt32(reader["F_IS_APPROVED"]);
                             
-                            HttpContext.Session.SetString("UserSession", targetUser);
-                            HttpContext.Session.SetInt32("IsAdmin", Convert.ToInt32(reader["F_IS_ADMIN"]));
-                            HttpContext.Session.SetInt32("CanAddRow", Convert.ToInt32(reader["F_CAN_ADD_ROW"]));
-                            HttpContext.Session.SetInt32("CanDownload", Convert.ToInt32(reader["F_CAN_DOWNLOAD"]));
-                            HttpContext.Session.SetInt32("CanImport", Convert.ToInt32(reader["F_CAN_IMPORT"]));
-                            HttpContext.Session.SetInt32("CanExport", Convert.ToInt32(reader["F_CAN_EXPORT"]));
-                            HttpContext.Session.SetInt32("CanCompare", Convert.ToInt32(reader["F_CAN_COMPARE"]));
-                            HttpContext.Session.SetInt32("CanEmail", Convert.ToInt32(reader["F_CAN_EMAIL"]));
-                            
-                            HttpContext.Session.SetInt32("CanSeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]));
-                            HttpContext.Session.SetInt32("CanSeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]));
-                            HttpContext.Session.SetInt32("CanSeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]));
-                            HttpContext.Session.SetInt32("CanSeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]));
-                            HttpContext.Session.SetInt32("CanUseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]));
-                            HttpContext.Session.SetInt32("CanUseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]));
+                            if (isApprovedVal == 1)
+                            {
+                                HttpContext.Session.SetString("UserSession", targetUser);
+                                HttpContext.Session.SetInt32("IsAdmin", Convert.ToInt32(reader["F_IS_ADMIN"]));
+                                HttpContext.Session.SetInt32("CanAddRow", Convert.ToInt32(reader["F_CAN_ADD_ROW"]));
+                                HttpContext.Session.SetInt32("CanDownload", Convert.ToInt32(reader["F_CAN_DOWNLOAD"]));
+                                HttpContext.Session.SetInt32("CanImport", Convert.ToInt32(reader["F_CAN_IMPORT"]));
+                                HttpContext.Session.SetInt32("CanExport", Convert.ToInt32(reader["F_CAN_EXPORT"]));
+                                HttpContext.Session.SetInt32("CanCompare", Convert.ToInt32(reader["F_CAN_COMPARE"]));
+                                HttpContext.Session.SetInt32("CanEmail", Convert.ToInt32(reader["F_CAN_EMAIL"]));
+                                
+                                HttpContext.Session.SetInt32("CanSeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]));
+                                HttpContext.Session.SetInt32("CanSeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]));
+                                HttpContext.Session.SetInt32("CanSeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]));
+                                HttpContext.Session.SetInt32("CanSeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]));
+                                HttpContext.Session.SetInt32("CanUseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]));
+                                HttpContext.Session.SetInt32("CanUseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]));
+                            }
                         }
                     }
                 }
@@ -282,19 +294,19 @@ namespace ProductHub_MVC.Controllers
                 // password = Guid.NewGuid().ToString("N");
                 string generatedPassword = Guid.NewGuid().ToString("N");
 
-                // Save to T_USERS with default reader permissions
+                // Save to T_USERS with default reader permissions and F_IS_APPROVED = 0 (Pending)
                 using (var conn = _context.CreateConnection())
                 {
                     string query = @"INSERT INTO T_USERS (
                                         F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
                                         F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
                                         F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
-                                        F_RESTRICTED_BRAND
+                                        F_RESTRICTED_BRAND, F_IS_APPROVED
                                      ) VALUES (
                                         @U, @P, '', @E, 0, 
                                         0, 0, 0, 0, 0, 0,
                                         1, 1, 1, 1, 0, 0,
-                                        'ALL'
+                                        'ALL', 0
                                      )";
                     using (var cmd = new SqlCommand(query, (SqlConnection)conn))
                     {
@@ -307,23 +319,7 @@ namespace ProductHub_MVC.Controllers
                 }
 
                 targetUser = uniqueUsername;
-
-                // Sign in the newly registered user
-                HttpContext.Session.SetString("UserSession", targetUser);
-                HttpContext.Session.SetInt32("IsAdmin", 0);
-                HttpContext.Session.SetInt32("CanAddRow", 0);
-                HttpContext.Session.SetInt32("CanDownload", 0);
-                HttpContext.Session.SetInt32("CanImport", 0);
-                HttpContext.Session.SetInt32("CanExport", 0);
-                HttpContext.Session.SetInt32("CanCompare", 0);
-                HttpContext.Session.SetInt32("CanEmail", 0);
-                
-                HttpContext.Session.SetInt32("CanSeeBrand", 1);
-                HttpContext.Session.SetInt32("CanSeeQty", 1);
-                HttpContext.Session.SetInt32("CanSeePrice", 1);
-                HttpContext.Session.SetInt32("CanSeeRating", 1);
-                HttpContext.Session.SetInt32("CanUseEdit", 0);
-                HttpContext.Session.SetInt32("CanUseDelete", 0);
+                isApprovedVal = 0;
             }
 
             // Invalidate the session-bound login token immediately after successful auth
@@ -336,9 +332,16 @@ namespace ProductHub_MVC.Controllers
             HttpContext.Session.Remove("Google_Pending_OtpExpiry");
 
             // Log activity into history table
-            LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully verified Google 2-Step OTP and signed in. User: {targetUser}, Email: {pendingEmail}");
-
-            return Json(new { success = true });
+            if (isApprovedVal == 1)
+            {
+                LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully verified Google 2-Step OTP and signed in. User: {targetUser}, Email: {pendingEmail}");
+                return Json(new { success = true, isApproved = true });
+            }
+            else
+            {
+                LogActivity(targetUser, "GOOGLE_REGISTER_PENDING", $"Submitted Google sign-in request for verification. User: {targetUser}, Email: {pendingEmail} is pending admin approval.");
+                return Json(new { success = true, isApproved = false });
+            }
         }
 
         [HttpGet]
@@ -502,12 +505,12 @@ namespace ProductHub_MVC.Controllers
                                     F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
                                     F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
                                     F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
-                                    F_RESTRICTED_BRAND
+                                    F_RESTRICTED_BRAND, F_IS_APPROVED
                                  ) VALUES (
                                     @U, @P, @M, @E, 0, 
                                     0, 0, 0, 0, 0, 0,
                                     1, 1, 1, 1, 0, 0,
-                                    'ALL'
+                                    'ALL', 0
                                  )";
                 using (var cmd = new SqlCommand(query, (SqlConnection)conn))
                 {
@@ -521,7 +524,7 @@ namespace ProductHub_MVC.Controllers
             }
 
             // Log activity step into history table
-            LogActivity(pendingUser, "USER_REGISTERED", "Completed public registration OTP verification and created new user account.");
+            LogActivity(pendingUser, "USER_REGISTERED", "Completed public registration OTP verification. Account created in Pending Approval state.");
 
             // Dispatch username and auto-generated password via Email/SMS
             bool notificationDispatched = await SendCredentialsToNewUser(pendingUser, autoGeneratedPassword, pendingEmail, pendingMobile);
@@ -535,11 +538,11 @@ namespace ProductHub_MVC.Controllers
 
             if (notificationDispatched)
             {
-                TempData["Success"] = "✅ Registration successful! Your login credentials have been sent to your email/mobile.";
+                TempData["Success"] = "✅ Registration submitted! Your credentials have been sent, but your account is pending administrator approval before you can log in.";
             }
             else
             {
-                TempData["Success"] = $"✅ Registration successful! Account: {pendingUser}, Password: {autoGeneratedPassword} (Please note this password to login).";
+                TempData["Success"] = $"✅ Registration submitted! Account: {pendingUser}, Password: {autoGeneratedPassword} (Note this, but login will fail until approved by administrator).";
             }
 
             return RedirectToAction(nameof(Login));

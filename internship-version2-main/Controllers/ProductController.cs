@@ -204,7 +204,7 @@ namespace ProductHub_MVC.Controllers
             List<Dictionary<string, object>> userProfiles = new List<Dictionary<string, object>>();
             using (var connection = _context.CreateConnection())
             {
-                string query = "SELECT F_USER_ID, F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_BACKUP_CODE, F_RESTRICTED_BRAND, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL, F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_EMAIL FROM T_USERS";
+                string query = "SELECT F_USER_ID, F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_BACKUP_CODE, F_RESTRICTED_BRAND, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL, F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_EMAIL, F_IS_APPROVED FROM T_USERS";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
                 {
                     connection.Open();
@@ -222,7 +222,7 @@ namespace ProductHub_MVC.Controllers
                             { "SeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]) }, { "SeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]) },
                             { "SeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]) }, { "SeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]) },
                             { "UseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]) }, { "UseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]) },
-                            { "EmailAddress", reader["F_EMAIL"]?.ToString() ?? "" }
+                            { "EmailAddress", reader["F_EMAIL"]?.ToString() ?? "" }, { "IsApproved", Convert.ToInt32(reader["F_IS_APPROVED"]) }
                         });
                     }
                 }
@@ -256,6 +256,44 @@ namespace ProductHub_MVC.Controllers
             }
             LogActivity("PERMISSIONS", $"Modified authorization switches and structural visibility brand constraint to '{restrictedBrand}' for account user: '{userNameParam}'.");
             TempData["SuccessMessage"] = "🛡️ Permission configuration synchronized live in real-time!";
+            return RedirectToAction(nameof(Users));
+        }
+
+        [HttpPost]
+        public IActionResult ApproveUser(int userId, string targetName)
+        {
+            if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "UPDATE T_USERS SET F_IS_APPROVED = 1 WHERE F_USER_ID = @Id";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", userId);
+                    connection.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            LogActivity("USER_APPROVAL", $"Approved pending registration access request and activated dashboard permissions for user: '{targetName}'.");
+            TempData["SuccessMessage"] = $"✅ User '{targetName}' has been successfully approved and granted application access!";
+            return RedirectToAction(nameof(Users));
+        }
+
+        [HttpPost]
+        public IActionResult RejectUser(int userId, string targetName)
+        {
+            if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "DELETE FROM T_USERS WHERE F_USER_ID = @Id AND F_IS_APPROVED = 0 AND F_IS_ADMIN = 0";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", userId);
+                    connection.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            LogActivity("USER_REJECTION", $"Rejected and deleted pending registration request for user: '{targetName}'.");
+            TempData["SuccessMessage"] = $"❌ Registration request for user '{targetName}' has been rejected and removed.";
             return RedirectToAction(nameof(Users));
         }
 
