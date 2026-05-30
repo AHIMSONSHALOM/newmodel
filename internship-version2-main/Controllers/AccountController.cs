@@ -102,6 +102,162 @@ namespace ProductHub_MVC.Controllers
         }
 
         [HttpGet]
+        public IActionResult GoogleLogin()
+        {
+            if (HttpContext.Session.GetString("UserSession") != null) return RedirectToAction("Index", "Product");
+            
+            // Generate a secure one-time login token
+            string token = Guid.NewGuid().ToString("N");
+            HttpContext.Session.SetString("GoogleLoginToken", token);
+            ViewBag.GoogleLoginToken = token;
+            
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult GoogleAuthenticate([FromBody] GoogleAuthRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Email))
+            {
+                return Json(new { success = false, message = "Invalid auth request parameters." });
+            }
+
+            // Retrieve and immediately invalidate the one-time token
+            string expectedToken = HttpContext.Session.GetString("GoogleLoginToken");
+            HttpContext.Session.Remove("GoogleLoginToken");
+
+            if (string.IsNullOrEmpty(expectedToken) || request.Token != expectedToken)
+            {
+                return Json(new { success = false, message = "Security warning: Invalid or expired login token signature." });
+            }
+
+            string targetUser = "";
+            bool userExists = false;
+
+            using (var connection = _context.CreateConnection())
+            {
+                string checkQuery = @"SELECT F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                    F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE
+                                    FROM T_USERS WHERE F_EMAIL = @Email OR F_USERNAME = @Email";
+                
+                using (var cmd = new SqlCommand(checkQuery, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Email", request.Email.Trim());
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            userExists = true;
+                            targetUser = reader["F_USERNAME"].ToString() ?? string.Empty;
+                            
+                            HttpContext.Session.SetString("UserSession", targetUser);
+                            HttpContext.Session.SetInt32("IsAdmin", Convert.ToInt32(reader["F_IS_ADMIN"]));
+                            HttpContext.Session.SetInt32("CanAddRow", Convert.ToInt32(reader["F_CAN_ADD_ROW"]));
+                            HttpContext.Session.SetInt32("CanDownload", Convert.ToInt32(reader["F_CAN_DOWNLOAD"]));
+                            HttpContext.Session.SetInt32("CanImport", Convert.ToInt32(reader["F_CAN_IMPORT"]));
+                            HttpContext.Session.SetInt32("CanExport", Convert.ToInt32(reader["F_CAN_EXPORT"]));
+                            HttpContext.Session.SetInt32("CanCompare", Convert.ToInt32(reader["F_CAN_COMPARE"]));
+                            HttpContext.Session.SetInt32("CanEmail", Convert.ToInt32(reader["F_CAN_EMAIL"]));
+                            
+                            HttpContext.Session.SetInt32("CanSeeBrand", Convert.ToInt32(reader["F_CAN_SEE_BRAND"]));
+                            HttpContext.Session.SetInt32("CanSeeQty", Convert.ToInt32(reader["F_CAN_SEE_QTY"]));
+                            HttpContext.Session.SetInt32("CanSeePrice", Convert.ToInt32(reader["F_CAN_SEE_PRICE"]));
+                            HttpContext.Session.SetInt32("CanSeeRating", Convert.ToInt32(reader["F_CAN_SEE_RATING"]));
+                            HttpContext.Session.SetInt32("CanUseEdit", Convert.ToInt32(reader["F_CAN_USE_EDIT"]));
+                            HttpContext.Session.SetInt32("CanUseDelete", Convert.ToInt32(reader["F_CAN_USE_DELETE"]));
+                        }
+                    }
+                }
+            }
+
+            if (!userExists)
+            {
+                // Auto registration logic:
+                // username = email.Split('@')[0];
+                string baseUsername = request.Email.Split('@')[0];
+                string uniqueUsername = baseUsername;
+                
+                // Enforce uniqueness for the username
+                int suffix = 1;
+                bool isUnique = false;
+                using (var connection = _context.CreateConnection())
+                {
+                    connection.Open();
+                    while (!isUnique)
+                    {
+                        string checkUserQuery = "SELECT COUNT(1) FROM T_USERS WHERE F_USERNAME = @User";
+                        using (var checkCmd = new SqlCommand(checkUserQuery, (SqlConnection)connection))
+                        {
+                            checkCmd.Parameters.AddWithValue("@User", uniqueUsername);
+                            int count = (int)checkCmd.ExecuteScalar();
+                            if (count == 0)
+                            {
+                                isUnique = true;
+                            }
+                            else
+                            {
+                                uniqueUsername = baseUsername + suffix;
+                                suffix++;
+                            }
+                        }
+                    }
+                }
+
+                // password = Guid.NewGuid().ToString("N");
+                string generatedPassword = Guid.NewGuid().ToString("N");
+
+                // Save to T_USERS with default reader permissions
+                using (var conn = _context.CreateConnection())
+                {
+                    string query = @"INSERT INTO T_USERS (
+                                        F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
+                                        F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                        F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
+                                        F_RESTRICTED_BRAND
+                                     ) VALUES (
+                                        @U, @P, '', @E, 0, 
+                                        0, 0, 0, 0, 0, 0,
+                                        1, 1, 1, 1, 0, 0,
+                                        'ALL'
+                                     )";
+                    using (var cmd = new SqlCommand(query, (SqlConnection)conn))
+                    {
+                        cmd.Parameters.AddWithValue("@U", uniqueUsername);
+                        cmd.Parameters.AddWithValue("@P", generatedPassword);
+                        cmd.Parameters.AddWithValue("@E", request.Email.Trim());
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                targetUser = uniqueUsername;
+
+                // Sign in the newly registered user
+                HttpContext.Session.SetString("UserSession", targetUser);
+                HttpContext.Session.SetInt32("IsAdmin", 0);
+                HttpContext.Session.SetInt32("CanAddRow", 0);
+                HttpContext.Session.SetInt32("CanDownload", 0);
+                HttpContext.Session.SetInt32("CanImport", 0);
+                HttpContext.Session.SetInt32("CanExport", 0);
+                HttpContext.Session.SetInt32("CanCompare", 0);
+                HttpContext.Session.SetInt32("CanEmail", 0);
+                
+                HttpContext.Session.SetInt32("CanSeeBrand", 1);
+                HttpContext.Session.SetInt32("CanSeeQty", 1);
+                HttpContext.Session.SetInt32("CanSeePrice", 1);
+                HttpContext.Session.SetInt32("CanSeeRating", 1);
+                HttpContext.Session.SetInt32("CanUseEdit", 0);
+                HttpContext.Session.SetInt32("CanUseDelete", 0);
+            }
+
+            // Log activity into history table
+            LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully authenticated access credentials via secure simulated Google chooser. User: {targetUser}, Email: {request.Email}");
+
+            return Json(new { success = true });
+        }
+
+        [HttpGet]
         public IActionResult Register()
         {
             if (HttpContext.Session.GetString("UserSession") != null) return RedirectToAction("Index", "Product");
