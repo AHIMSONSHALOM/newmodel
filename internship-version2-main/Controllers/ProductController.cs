@@ -306,24 +306,40 @@ namespace ProductHub_MVC.Controllers
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
             
             string userEmail = "";
+            string userMobile = "";
+            string autoPassword = "";
+            
+            // Auto-generate fresh simple password upon approval to guarantee they receive it
+            const string validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+            Random random = new Random();
+            autoPassword = new string(Enumerable.Repeat(validChars, 8)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
+
             using (var connection = _context.CreateConnection())
             {
                 connection.Open();
                 
-                // 1. Retrieve the registered email address of the user
-                string emailQuery = "SELECT F_EMAIL FROM T_USERS WHERE F_USER_ID = @Id";
-                using (var emailCmd = new SqlCommand(emailQuery, (SqlConnection)connection))
+                // 1. Retrieve the registered email address and mobile number of the user
+                string userQuery = "SELECT F_EMAIL, F_MOBILE_NUMBER FROM T_USERS WHERE F_USER_ID = @Id";
+                using (var cmd = new SqlCommand(userQuery, (SqlConnection)connection))
                 {
-                    emailCmd.Parameters.AddWithValue("@Id", userId);
-                    var res = emailCmd.ExecuteScalar();
-                    if (res != null) userEmail = res.ToString();
+                    cmd.Parameters.AddWithValue("@Id", userId);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            userEmail = reader["F_EMAIL"]?.ToString() ?? "";
+                            userMobile = reader["F_MOBILE_NUMBER"]?.ToString() ?? "";
+                        }
+                    }
                 }
 
-                // 2. Approve the user account
-                string query = "UPDATE T_USERS SET F_IS_APPROVED = 1 WHERE F_USER_ID = @Id";
+                // 2. Approve the user account AND update their password
+                string query = "UPDATE T_USERS SET F_IS_APPROVED = 1, F_PASSWORD = @Pass WHERE F_USER_ID = @Id";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
                 {
                     cmd.Parameters.AddWithValue("@Id", userId);
+                    cmd.Parameters.AddWithValue("@Pass", autoPassword);
                     cmd.ExecuteNonQuery();
                 }
             }
@@ -357,11 +373,28 @@ namespace ProductHub_MVC.Controllers
                                 </div>
                                 <div style='margin-bottom: 24px; line-height: 1.6; color: #334155; font-size: 15px;'>
                                     <p>Hello <strong>{targetName}</strong>,</p>
-                                    <p>Great news! The system administrator has reviewed and <strong>approved</strong> your registration request. You can now log into ProductHub using your registered Google account or credentials.</p>
+                                    <p>Great news! The system administrator has reviewed and <strong>approved</strong> your registration request. You can now log into ProductHub using your registered Google account or the credentials below:</p>
                                     
-                                    <div style='background-color: #F8FAFC; padding: 20px; border-left: 4px solid #16A34A; margin: 24px 0; border-radius: 0 8px 8px 0;'>
-                                        <p style='margin: 0; font-weight: 700; color: #0F172A; font-size: 14px;'>⚠️ Action Required:</p>
-                                        <p style='margin: 6px 0 0 0; color: #475569; font-size: 13.5px;'>Please sign in and ensure that your profile information is up to date, including your <strong>mobile number</strong>, to secure your account and configure 2-Step OTP options.</p>
+                                    <div style='background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px; margin: 20px 0;'>
+                                        <table style='width: 100%; border-collapse: collapse; font-size: 14.5px;'>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; width: 140px; font-weight: 500;'>Username:</td>
+                                                <td style='padding: 6px 0; color: #1E293B; font-weight: 700;'>{targetName}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; font-weight: 500;'>Generated Pass:</td>
+                                                <td style='padding: 6px 0; color: #EF4444; font-weight: 700; font-family: monospace; font-size: 15.5px;'>{autoPassword}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; font-weight: 500;'>Mobile Number:</td>
+                                                <td style='padding: 6px 0; color: #1E293B; font-weight: 600;'>{userMobile}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+                                    <div style='background-color: #FFFBEB; padding: 20px; border-left: 4px solid #D97706; margin: 24px 0; border-radius: 0 8px 8px 0;'>
+                                        <p style='margin: 0; font-weight: 700; color: #B45309; font-size: 14.2px;'>⚠️ Action Required:</p>
+                                        <p style='margin: 6px 0 0 0; color: #78350F; font-size: 13.5px;'>Please sign in and ensure that your profile information is up to date, including your <strong>mobile number</strong>, to secure your account and configure 2-Step OTP options.</p>
                                     </div>
                                 </div>
                                 <div style='text-align: center; margin-top: 30px;'>
