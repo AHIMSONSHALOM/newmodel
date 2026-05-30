@@ -281,16 +281,31 @@ namespace ProductHub_MVC.Controllers
                 HttpContext.Session.SetString("UserSession", request.Username.Trim());
                 HttpContext.Session.SetString("UserSessionId", sessionId);
 
+                string mobile = "";
                 using (var connection = _context.CreateConnection())
                 {
+                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@U", request.Username.Trim());
+                        connection.Open();
+                        var res = cmd.ExecuteScalar();
+                        if (res != null) mobile = res.ToString();
+                    }
+
                     string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
                     using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
                     {
                         cmd.Parameters.AddWithValue("@S", sessionId);
                         cmd.Parameters.AddWithValue("@U", request.Username.Trim());
-                        connection.Open();
+                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
                         cmd.ExecuteNonQuery();
                     }
+                }
+
+                if (string.IsNullOrWhiteSpace(mobile))
+                {
+                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
                 }
 
                 LoadUserPermissionsToSession(request.Username.Trim());
@@ -449,16 +464,31 @@ namespace ProductHub_MVC.Controllers
                 HttpContext.Session.SetString("UserSession", targetUser);
                 HttpContext.Session.SetString("UserSessionId", sessionId);
 
+                string mobile = "";
                 using (var connection = _context.CreateConnection())
                 {
+                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@U", targetUser);
+                        connection.Open();
+                        var res = cmd.ExecuteScalar();
+                        if (res != null) mobile = res.ToString();
+                    }
+
                     string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
                     using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
                     {
                         cmd.Parameters.AddWithValue("@S", sessionId);
                         cmd.Parameters.AddWithValue("@U", targetUser);
-                        connection.Open();
+                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
                         cmd.ExecuteNonQuery();
                     }
+                }
+
+                if (string.IsNullOrWhiteSpace(mobile))
+                {
+                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
                 }
 
                 LoadUserPermissionsToSession(targetUser);

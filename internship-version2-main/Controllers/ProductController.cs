@@ -93,6 +93,11 @@ namespace ProductHub_MVC.Controllers
             ViewBag.CanUseEdit = HttpContext.Session.GetInt32("CanUseEdit") ?? 0;
             ViewBag.CanUseDelete = HttpContext.Session.GetInt32("CanUseDelete") ?? 0;
 
+            if (HttpContext.Session.GetString("PromptUpdateMobile") == "true")
+            {
+                ViewBag.PromptUpdateMobile = true;
+            }
+
             // Read the dynamic corporate brand data isolation row config for this session profile
             string restrictedBrand = "ALL";
             using (var connection = _context.CreateConnection()) {
@@ -548,6 +553,42 @@ namespace ProductHub_MVC.Controllers
                 }
             }
             LogActivity("DELETE", $"Removed item row permanently from product catalog: '{namePlaceholder}'.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public IActionResult UpdateMobileNumber(string mobileNumber)
+        {
+            string loggedUser = HttpContext.Session.GetString("UserSession");
+            if (loggedUser == null) return RedirectToAction("Login", "Account");
+            if (!IsSessionValid())
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = "⚠️ Session Terminated: Your account has been logged in on another machine.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (string.IsNullOrWhiteSpace(mobileNumber))
+            {
+                TempData["ErrorMessage"] = "❌ Mobile number cannot be empty.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "UPDATE T_USERS SET F_MOBILE_NUMBER = @M WHERE F_USERNAME = @U";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@M", mobileNumber.Trim());
+                    cmd.Parameters.AddWithValue("@U", loggedUser);
+                    connection.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+            LogActivity("PROFILE_UPDATE", $"User successfully updated their mobile number to: {mobileNumber.Trim()}");
+            HttpContext.Session.Remove("PromptUpdateMobile"); // Remove the flag since it's set!
+            TempData["SuccessMessage"] = "✅ Mobile number successfully updated!";
             return RedirectToAction(nameof(Index));
         }
 

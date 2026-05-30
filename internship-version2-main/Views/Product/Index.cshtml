@@ -278,3 +278,46 @@
         new bootstrap.Modal(document.getElementById('editProductModal')).show();
     }
 </script>
+
+@if (ViewBag.PromptUpdateMobile == true)
+{
+    <!-- Premium Glassmorphic Update Mobile Number Modal -->
+    <div class="modal fade" id="promptUpdateMobileModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);">
+                <form asp-action="UpdateMobileNumber" asp-controller="Product" method="post">
+                    <div class="modal-header text-white border-0 py-3" style="background-color: var(--primary-color);">
+                        <h5 class="modal-title fw-bold m-0"><i class="fa-solid fa-mobile-screen-button me-2"></i>Secure Your Account</h5>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div style="background-color: #E8F5E9; color: #16A34A; display: inline-block; padding: 16px; border-radius: 50%; margin-bottom: 16px;">
+                            <i class="fa-solid fa-shield-halved fa-2x"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark mb-2" style="font-size: 1.25rem;">Confirm Your Mobile Number</h4>
+                        <p class="text-secondary small mb-4">Since this is your first time logging in using Google SSO, please verify and update your mobile number to configure 2-Step OTP security verification options.</p>
+                        
+                        <div class="text-start mb-3">
+                            <label class="form-label fw-bold small text-secondary">Mobile Number</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0" style="border-radius: 8px 0 0 8px; border: 1px solid #CBD5E1; height: 42px;"><i class="fa-solid fa-phone text-secondary"></i></span>
+                                <input type="text" name="mobileNumber" class="form-control border-start-0" style="border-radius: 0 8px 8px 0; font-size: 14px; height: 42px;" placeholder="e.g. 9876543210" required pattern="^[0-9]{10}$" title="Please enter a valid 10-digit mobile number." autocomplete="off" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0 py-3 justify-content-center">
+                        <button type="submit" class="btn btn-saas-primary py-2 px-5 fw-bold w-75 justify-content-center">
+                            <i class="fa-solid fa-circle-check me-1"></i> Update and Proceed
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var myModal = new bootstrap.Modal(document.getElementById('promptUpdateMobileModal'));
+            myModal.show();
+        });
+    </script>
+}
