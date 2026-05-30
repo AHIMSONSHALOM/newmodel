@@ -722,13 +722,66 @@ namespace ProductHub_MVC.Controllers
             {
                 try
                 {
+                    string scheme = HttpContext.Request.Scheme;
+                    string host = HttpContext.Request.Host.ToUriComponent();
+                    string baseUrl = $"{scheme}://{host}";
+
                     string senderEmail = "tpass2829@gmail.com"; 
                     string senderPassword = "uozwlvrkykjzgjmj"; 
                     using (MailMessage mail = new MailMessage()) { 
-                        mail.From = new MailAddress(senderEmail); 
+                        mail.From = new MailAddress(senderEmail, "ProductHub Support"); 
                         mail.To.Add(email.Trim()); 
                         mail.Subject = "🎉 Welcome to ProductHub - Account Created Successfully"; 
-                        mail.Body = $"Hello {username},\n\nYour account has been created successfully!\n\nHere are your login credentials:\nUsername: {username}\nPassword: {password}\n\nPlease login using these credentials."; 
+                        mail.IsBodyHtml = true;
+                        mail.Body = $@"
+                            <div style='font-family: &quot;Segoe UI&quot;, Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.02);'>
+                                <div style='text-align: center; margin-bottom: 24px;'>
+                                    <div style='background-color: #E8F5E9; color: #16A34A; display: inline-block; padding: 12px; border-radius: 50%; margin-bottom: 12px;'>
+                                        <svg width='32' height='32' fill='currentColor' viewBox='0 0 24 24' style='display: block;'>
+                                            <path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/>
+                                        </svg>
+                                    </div>
+                                    <h2 style='color: #1E293B; margin: 0 0 8px 0; font-weight: 700; font-size: 22px;'>Welcome to ProductHub!</h2>
+                                    <p style='color: #64748B; font-size: 14px; margin: 0;'>Your login profile has been successfully created.</p>
+                                </div>
+                                
+                                <div style='margin-bottom: 24px; line-height: 1.6; color: #334155; font-size: 15px;'>
+                                    <p>Hello <strong>{username}</strong>,</p>
+                                    <p>Your account is ready! Below are your secure login credentials:</p>
+                                    
+                                    <div style='background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 18px; margin: 20px 0;'>
+                                        <table style='width: 100%; border-collapse: collapse; font-size: 14.5px;'>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; width: 140px; font-weight: 500;'>Username:</td>
+                                                <td style='padding: 6px 0; color: #1E293B; font-weight: 700;'>{username}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; font-weight: 500;'>Temporary Pass:</td>
+                                                <td style='padding: 6px 0; color: #EF4444; font-weight: 700; font-family: monospace; font-size: 15.5px;'>{password}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style='padding: 6px 0; color: #64748B; font-weight: 500;'>Mobile Number:</td>
+                                                <td style='padding: 6px 0; color: #1E293B; font-weight: 600;'>{mobile}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    
+                                    <div style='background-color: #FFFBEB; padding: 20px; border-left: 4px solid #D97706; margin: 24px 0; border-radius: 0 8px 8px 0;'>
+                                        <p style='margin: 0; font-weight: 700; color: #B45309; font-size: 14.2px;'>⚠️ Action Required:</p>
+                                        <p style='margin: 6px 0 0 0; color: #78350F; font-size: 13.5px;'>Please sign in and ensure that your profile information is up to date, including your <strong>mobile number</strong>, to secure your account and configure 2-Step OTP options.</p>
+                                    </div>
+                                </div>
+                                
+                                <div style='text-align: center; margin-top: 30px;'>
+                                    <a href='{baseUrl}' style='background-color: #16A34A; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(22,163,74,0.15); transition: background-color 0.15s ease;'>Log into ProductHub</a>
+                                </div>
+                                
+                                <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;' />
+                                <div style='text-align: center; font-size: 12px; color: #94A3B8;'>
+                                    This is a secure security notification from ProductHub.<br/>
+                                    If you did not request this account activation, please contact system support.
+                                </div>
+                            </div>"; 
                         
                         using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { 
                             smtp.EnableSsl = true; 
