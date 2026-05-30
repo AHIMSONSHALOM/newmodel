@@ -333,6 +333,10 @@ namespace ProductHub_MVC.Controllers
             {
                 try
                 {
+                    string scheme = HttpContext.Request.Scheme;
+                    string host = HttpContext.Request.Host.ToUriComponent();
+                    string baseUrl = $"{scheme}://{host}";
+
                     string senderEmail = "tpass2829@gmail.com"; 
                     string senderPassword = "uozwlvrkykjzgjmj"; 
                     using (MailMessage mail = new MailMessage()) { 
@@ -361,7 +365,7 @@ namespace ProductHub_MVC.Controllers
                                     </div>
                                 </div>
                                 <div style='text-align: center; margin-top: 30px;'>
-                                    <a href='http://localhost:5242' style='background-color: #16A34A; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(22,163,74,0.15); transition: background-color 0.15s ease;'>Log into ProductHub</a>
+                                    <a href='{baseUrl}' style='background-color: #16A34A; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(22,163,74,0.15); transition: background-color 0.15s ease;'>Log into ProductHub</a>
                                 </div>
                                 <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;' />
                                 <div style='text-align: center; font-size: 12px; color: #94A3B8;'>
