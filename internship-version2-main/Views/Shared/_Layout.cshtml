@@ -31,6 +31,19 @@
             <div class="d-flex align-items-center gap-3">
                 @if (Context.Session.GetString("UserSession") != null)
                 {
+                    @if (Context.Session.GetString("PromptUpdateMobile") == "true")
+                    {
+                        <form asp-action="UpdateMobileNumber" asp-controller="Product" method="post" class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill border border-warning shadow-sm" style="background-color: #FFFDF5; margin-right: 8px;">
+                            <span class="text-warning-emphasis fw-bold text-nowrap" style="font-size: 0.78rem; font-family: 'Poppins', sans-serif;">
+                                <i class="fa-solid fa-mobile-screen-button text-warning me-1"></i> Update Mobile:
+                            </span>
+                            <input type="text" name="mobileNumber" class="form-control form-control-sm border-secondary-subtle" placeholder="10-digit number" required pattern="^[0-9]{10}$" title="Please enter a valid 10-digit mobile number." style="width: 140px; height: 28px; font-size: 0.78rem; border-radius: 14px; padding: 2px 10px; font-weight: 500;" />
+                            <button type="submit" class="btn btn-sm btn-success px-3 fw-bold" style="height: 28px; border-radius: 14px; font-size: 0.78rem; line-height: 1;">
+                                Save
+                            </button>
+                        </form>
+                    }
+
                     @if (Context.Session.GetInt32("IsAdmin") == 1)
                     {
                         <a class="btn btn-sm btn-saas-secondary py-2 px-3 me-1" asp-action="History" asp-controller="Product" style="font-size: 0.8rem; font-weight: 700;">
@@ -39,8 +52,16 @@
                     }
 
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-saas-secondary dropdown-toggle fw-bold text-uppercase px-3" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem; height: 38px;">
-                            <i class="fa-solid fa-circle-user text-primary me-1" style="font-size: 1rem;"></i> @(Context.Session.GetString("UserSession") ?? "Admin") ▼
+                        <button class="btn btn-sm btn-saas-secondary dropdown-toggle fw-bold text-uppercase px-3 d-flex align-items-center gap-2" type="button" id="userMenuButton" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.8rem; height: 38px;">
+                            @if (Context.Session.GetString("UserProfilePicture") != null)
+                            {
+                                <img src="@Context.Session.GetString("UserProfilePicture")" class="rounded-circle" style="width: 22px; height: 22px; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <i class="fa-solid fa-circle-user text-primary" style="font-size: 1.1rem;"></i>
+                            }
+                            <span>@(Context.Session.GetString("UserSession") ?? "Admin") ▼</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuButton" style="min-width: 220px; font-size: 0.88rem; border-radius: 12px;">
                             <div class="px-2 py-1 fw-bold text-secondary border-bottom mb-2 text-uppercase" style="font-size: 0.7rem;">Account Console</div>

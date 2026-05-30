@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Http;
 using System;
@@ -11,12 +12,16 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Security.Claims;
 
 namespace ProductHub_MVC.Controllers
 {
     public class AccountController : Controller
     {
         private readonly SqlDbContext _context;
+        private readonly IConfiguration _configuration;
         private readonly string _fast2SmsApiKey;
         private readonly string _fast2SmsRoute;
         private readonly HttpClient _httpClient;
@@ -24,6 +29,7 @@ namespace ProductHub_MVC.Controllers
         public AccountController(SqlDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
             _fast2SmsApiKey = configuration["Fast2Sms:ApiKey"] ?? string.Empty;
             _fast2SmsRoute = configuration["Fast2Sms:Route"] ?? "q";
             _httpClient = new HttpClient();
@@ -45,10 +51,134 @@ namespace ProductHub_MVC.Controllers
             } catch { /* Fail-silent to preserve user core speed */ }
         }
 
+        // Helper method to save HTML email backups locally
+        private void SaveEmailBackup(string subject, string recipient, string bodyHtml)
+        {
+            try
+            {
+                string backupDir = Path.Combine(Directory.GetCurrentDirectory(), "Sent_Mails_Backup");
+                if (!Directory.Exists(backupDir))
+                {
+                    Directory.CreateDirectory(backupDir);
+                }
+                string fileName = $"{Guid.NewGuid()}_{recipient.Replace("@", "_").Replace(".", "_")}.html";
+                string filePath = Path.Combine(backupDir, fileName);
+                string backupContent = $"<!--\nSubject: {subject}\nTo: {recipient}\nDate: {DateTime.Now}\n-->\n\n{bodyHtml}";
+                System.IO.File.WriteAllText(filePath, backupContent);
+            }
+            catch { /* Fail-silent to guard thread execution speed */ }
+        }
+
+        // Single Session Restriction Checker (Option A)
+        private bool CheckAndEnforceSingleSession(int userId, string email, string userSessionName, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            // 1. Get or create persistent device ID cookie
+            string deviceId = Request.Cookies["PH_DeviceId"] ?? "";
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                deviceId = Guid.NewGuid().ToString("N");
+                var cookieOptions = new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddYears(1),
+                    HttpOnly = true,
+                    Secure = false, // Keep false for dev local hosting HTTP comfort
+                    SameSite = SameSiteMode.Lax
+                };
+                Response.Cookies.Append("PH_DeviceId", deviceId, cookieOptions);
+            }
+
+            // 2. Query active session for this user
+            string activeSessionId = "";
+            string activeSessionDeviceId = "";
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "SELECT SessionId, DeviceId FROM UserSessions WHERE UserId = @UserId AND IsActive = 1";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            activeSessionId = reader["SessionId"].ToString() ?? "";
+                            activeSessionDeviceId = reader["DeviceId"].ToString() ?? "";
+                        }
+                    }
+                }
+            }
+
+            if (!string.IsNullOrEmpty(activeSessionId))
+            {
+                // There is an active session
+                if (activeSessionDeviceId == deviceId)
+                {
+                    // Same device rollover! Deactivate old session gracefully
+                    using (var connection = _context.CreateConnection())
+                    {
+                        string query = "UPDATE UserSessions SET IsActive = 0, LogoutTime = @LogoutTime WHERE UserId = @UserId AND IsActive = 1";
+                        using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                        {
+                            cmd.Parameters.AddWithValue("@LogoutTime", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@UserId", userId);
+                            connection.Open();
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    LogActivity(userSessionName, "SESSION_ROLLOVER", $"Deactivated older active session on same device to allow graceful rollover.");
+                }
+                else
+                {
+                    // Different device block (Option A)
+                    errorMessage = "You are already logged in on another device. Please log out there first.";
+                    LogActivity(userSessionName, "LOGIN_BLOCKED", $"Login attempt blocked due to an active session on another device.");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Helper to log a new user session
+        private string CreateUserSessionRecord(int userId, string email, string userSessionName)
+        {
+            string deviceId = Request.Cookies["PH_DeviceId"] ?? Guid.NewGuid().ToString("N");
+            string browserInfo = Request.Headers["User-Agent"].ToString() ?? "Unknown";
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            Guid newSessionGuid = Guid.NewGuid();
+
+            using (var connection = _context.CreateConnection())
+            {
+                string query = @"INSERT INTO UserSessions (SessionId, UserId, Email, DeviceId, BrowserInfo, IpAddress, LoginTime, IsActive)
+                                 VALUES (@SessionId, @UserId, @Email, @DeviceId, @BrowserInfo, @IpAddress, @LoginTime, 1)";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@SessionId", newSessionGuid);
+                    cmd.Parameters.AddWithValue("@UserId", userId);
+                    cmd.Parameters.AddWithValue("@Email", email ?? "");
+                    cmd.Parameters.AddWithValue("@DeviceId", deviceId);
+                    cmd.Parameters.AddWithValue("@BrowserInfo", browserInfo.Length > 512 ? browserInfo.Substring(0, 512) : browserInfo);
+                    cmd.Parameters.AddWithValue("@IpAddress", ipAddress.Length > 64 ? ipAddress.Substring(0, 64) : ipAddress);
+                    cmd.Parameters.AddWithValue("@LoginTime", DateTime.Now);
+                    connection.Open();
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+            return newSessionGuid.ToString();
+        }
+
         [HttpGet]
-        public IActionResult Login()
+        public IActionResult Login(string? error)
         {
             if (HttpContext.Session.GetString("UserSession") != null) return RedirectToAction("Index", "Product");
+            
+            if (error == "SessionExpired")
+            {
+                TempData["ErrorMessage"] = "Your session has been terminated because a login was detected on another device or the session expired.";
+            }
             return View();
         }
 
@@ -59,8 +189,8 @@ namespace ProductHub_MVC.Controllers
 
             using (var connection = _context.CreateConnection())
             {
-                string query = @"SELECT F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
-                                F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_IS_APPROVED
+                string query = @"SELECT F_USER_ID, F_USERNAME, F_IS_ADMIN, F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE, F_IS_APPROVED, F_EMAIL
                                 FROM T_USERS WHERE F_USERNAME = @User AND F_PASSWORD = @Pass";
                 
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
@@ -79,8 +209,19 @@ namespace ProductHub_MVC.Controllers
                                 return View(model);
                             }
 
+                            int userId = Convert.ToInt32(reader["F_USER_ID"]);
+                            string email = reader["F_EMAIL"]?.ToString() ?? "";
                             string userSessionName = reader["F_USERNAME"].ToString() ?? string.Empty;
-                            string sessionId = Guid.NewGuid().ToString("N");
+
+                            // Single Session Restriction Check (Option A)
+                            if (!CheckAndEnforceSingleSession(userId, email, userSessionName, out string sessionError))
+                            {
+                                ModelState.AddModelError("", "⚠️ Login Blocked: " + sessionError);
+                                return View(model);
+                            }
+
+                            // Write new session record
+                            string sessionId = CreateUserSessionRecord(userId, email, userSessionName);
 
                             // Enforce SSO Lockout by updating Session ID in DB
                             using (var conn2 = _context.CreateConnection())
@@ -124,80 +265,348 @@ namespace ProductHub_MVC.Controllers
             return View(model);
         }
 
+        // =========================================================================
+        // GOOGLE OAUTH 2.0 SSO GATEWAYS
+        // =========================================================================
+
         [HttpGet]
-        public IActionResult GoogleLogin()
+        public IActionResult GoogleLoginExternal()
         {
             if (HttpContext.Session.GetString("UserSession") != null) return RedirectToAction("Index", "Product");
-            
-            // Generate a secure one-time login token
-            string token = Guid.NewGuid().ToString("N");
-            HttpContext.Session.SetString("GoogleLoginToken", token);
-            ViewBag.GoogleLoginToken = token;
-            
+
+            var redirectUrl = Url.Action("GoogleCallback", "Account");
+            var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
+            properties.SetParameter("prompt", "select_account");
+            return Challenge(properties, "Google");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GoogleCallback()
+        {
+            var authenticateResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (!authenticateResult.Succeeded)
+            {
+                TempData["Error"] = "❌ Google authentication failed.";
+                return RedirectToAction("Login");
+            }
+
+            var email = authenticateResult.Principal?.FindFirst(ClaimTypes.Email)?.Value
+                ?? authenticateResult.Principal?.FindFirst("email")?.Value;
+            var name = authenticateResult.Principal?.FindFirst(ClaimTypes.Name)?.Value
+                ?? authenticateResult.Principal?.FindFirst("name")?.Value;
+            var picture = authenticateResult.Principal?.FindFirst("picture")?.Value;
+
+            if (string.IsNullOrEmpty(email))
+            {
+                TempData["Error"] = "❌ Failed to retrieve email from Google profile.";
+                return RedirectToAction("Login");
+            }
+
+            // Sign out of external cookie authentication scheme to clear raw login cookie state
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            return await ProcessGoogleLoginAsync(email, name ?? "Google User", picture);
+        }
+
+        private async Task<IActionResult> ProcessGoogleLoginAsync(string email, string name, string? picture = null)
+        {
+            List<Dictionary<string, object>> profiles = new List<Dictionary<string, object>>();
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "SELECT F_USER_ID, F_USERNAME, F_IS_APPROVED FROM T_USERS WHERE F_EMAIL = @Email";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Email", email.Trim());
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            profiles.Add(new Dictionary<string, object>
+                            {
+                                { "userId", Convert.ToInt32(reader["F_USER_ID"]) },
+                                { "username", reader["F_USERNAME"].ToString() ?? "" },
+                                { "isApproved", Convert.ToInt32(reader["F_IS_APPROVED"]) }
+                            });
+                        }
+                    }
+                }
+            }
+
+            if (profiles.Count > 1)
+            {
+                HttpContext.Session.SetString("Google_Verified_Email", email);
+                if (!string.IsNullOrEmpty(picture))
+                {
+                    HttpContext.Session.SetString("Google_Verified_Picture", picture);
+                }
+                return RedirectToAction("GoogleProfileSelector");
+            }
+
+            int targetUserId = 0;
+            string targetUser = "";
+            int isApprovedVal = 0;
+            bool userExists = (profiles.Count == 1);
+
+            if (userExists)
+            {
+                targetUserId = (int)profiles[0]["userId"];
+                targetUser = profiles[0]["username"].ToString() ?? "";
+                isApprovedVal = (int)profiles[0]["isApproved"];
+            }
+            else
+            {
+                // Auto registration logic:
+                string baseUsername = email.Split('@')[0];
+                string uniqueUsername = baseUsername;
+                
+                int suffix = 1;
+                bool isUnique = false;
+                using (var connection = _context.CreateConnection())
+                {
+                    connection.Open();
+                    while (!isUnique)
+                    {
+                        string checkUserQuery = "SELECT COUNT(1) FROM T_USERS WHERE F_USERNAME = @User";
+                        using (var checkCmd = new SqlCommand(checkUserQuery, (SqlConnection)connection))
+                        {
+                            checkCmd.Parameters.AddWithValue("@User", uniqueUsername);
+                            int count = (int)checkCmd.ExecuteScalar();
+                            if (count == 0)
+                            {
+                                isUnique = true;
+                            }
+                            else
+                            {
+                                uniqueUsername = baseUsername + suffix;
+                                suffix++;
+                            }
+                        }
+                    }
+                }
+
+                string generatedPassword = Guid.NewGuid().ToString("N");
+
+                // Save a local account for the verified Google identity.
+                using (var conn = _context.CreateConnection())
+                {
+                    string query = @"INSERT INTO T_USERS (
+                                        F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
+                                        F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
+                                        F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
+                                        F_RESTRICTED_BRAND, F_IS_APPROVED
+                                     ) VALUES (
+                                        @U, @P, '', @E, 0, 
+                                        0, 0, 0, 0, 0, 0,
+                                        1, 1, 1, 1, 0, 0,
+                                        'ALL', 1
+                                     ); SELECT SCOPE_IDENTITY();";
+                    using (var cmd = new SqlCommand(query, (SqlConnection)conn))
+                    {
+                        cmd.Parameters.AddWithValue("@U", uniqueUsername);
+                        cmd.Parameters.AddWithValue("@P", generatedPassword);
+                        cmd.Parameters.AddWithValue("@E", email.Trim());
+                        conn.Open();
+                        var insertedId = cmd.ExecuteScalar();
+                        if (insertedId != null && insertedId != DBNull.Value)
+                        {
+                            targetUserId = Convert.ToInt32(insertedId);
+                        }
+                    }
+                }
+
+                targetUser = uniqueUsername;
+                isApprovedVal = 1;
+            }
+
+            if (isApprovedVal == 1)
+            {
+                // Single Session Restriction Check (Option A)
+                if (!CheckAndEnforceSingleSession(targetUserId, email, targetUser, out string sessionError))
+                {
+                    TempData["ErrorMessage"] = "⚠️ Login Blocked: " + sessionError;
+                    return RedirectToAction("Login");
+                }
+
+                // Create new active session record
+                string sessionId = CreateUserSessionRecord(targetUserId, email, targetUser);
+
+                HttpContext.Session.SetString("UserSession", targetUser);
+                HttpContext.Session.SetString("UserSessionId", sessionId);
+                if (!string.IsNullOrEmpty(picture))
+                {
+                    HttpContext.Session.SetString("UserProfilePicture", picture);
+                }
+
+                string mobile = "";
+                using (var connection = _context.CreateConnection())
+                {
+                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@U", targetUser);
+                        connection.Open();
+                        var res = cmd.ExecuteScalar();
+                        if (res != null) mobile = res.ToString();
+                    }
+
+                    string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@S", sessionId);
+                        cmd.Parameters.AddWithValue("@U", targetUser);
+                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(mobile))
+                {
+                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
+                }
+
+                LoadUserPermissionsToSession(targetUser);
+
+                LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully signed in via Google SSO. User: {targetUser}, Email: {email}");
+                return RedirectToAction("Index", "Product");
+            }
+            else
+            {
+                LogActivity(targetUser, "GOOGLE_REGISTER_PENDING", $"Submitted Google sign-in request. User: {targetUser}, Email: {email} is pending admin approval.");
+                TempData["Success"] = "⏳ Access Pending: Your account has been registered via Google and is pending administrator approval.";
+                return RedirectToAction("Login");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult GoogleProfileSelector()
+        {
+            string email = HttpContext.Session.GetString("Google_Verified_Email") ?? "";
+            if (string.IsNullOrEmpty(email))
+            {
+                return RedirectToAction("Login");
+            }
+
+            List<Dictionary<string, object>> profiles = new List<Dictionary<string, object>>();
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "SELECT F_USER_ID, F_USERNAME, F_IS_APPROVED FROM T_USERS WHERE F_EMAIL = @Email";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Email", email.Trim());
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            profiles.Add(new Dictionary<string, object>
+                            {
+                                { "userId", Convert.ToInt32(reader["F_USER_ID"]) },
+                                { "username", reader["F_USERNAME"].ToString() ?? "" },
+                                { "isApproved", Convert.ToInt32(reader["F_IS_APPROVED"]) }
+                            });
+                        }
+                    }
+                }
+            }
+
+            ViewBag.Profiles = profiles;
             return View();
         }
 
         [HttpPost]
-        public async Task<IActionResult> GoogleSendOtp([FromBody] GoogleAuthRequest request)
+        public async Task<IActionResult> SelectGoogleProfile(int userId)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.Email))
+            string email = HttpContext.Session.GetString("Google_Verified_Email") ?? "";
+            string picture = HttpContext.Session.GetString("Google_Verified_Picture") ?? "";
+            if (string.IsNullOrEmpty(email))
             {
-                return Json(new { success = false, message = "Invalid auth request parameters." });
+                return RedirectToAction("Login");
             }
 
-            // Retrieve the active login session token to prevent forged requests
-            string expectedToken = HttpContext.Session.GetString("GoogleLoginToken");
-            if (string.IsNullOrEmpty(expectedToken) || request.Token != expectedToken)
+            string targetUser = "";
+            int isApprovedVal = 0;
+            using (var connection = _context.CreateConnection())
             {
-                return Json(new { success = false, message = "Security warning: Invalid or expired login token signature." });
-            }
-
-            // Generate a secure 6-digit OTP
-            string generatedOtp = new Random().Next(100000, 999999).ToString();
-            DateTime expiry = DateTime.Now.AddMinutes(5);
-
-            // Buffer in Session
-            HttpContext.Session.SetString("Google_Pending_Email", request.Email.Trim());
-            HttpContext.Session.SetString("Google_Pending_Name", request.Name.Trim());
-            HttpContext.Session.SetString("Google_Pending_Otp", generatedOtp);
-            HttpContext.Session.SetString("Google_Pending_OtpExpiry", expiry.ToString());
-
-            bool otpDispatched = false;
-
-            // Attempt SMTP dispatch
-            try
-            {
-                string senderEmail = "tpass2829@gmail.com"; 
-                string senderPassword = "uozwlvrkykjzgjmj"; 
-                using (MailMessage mail = new MailMessage()) { 
-                    mail.From = new MailAddress(senderEmail); 
-                    mail.To.Add(request.Email.Trim()); 
-                    mail.Subject = "🔑 Google Verification Code"; 
-                    mail.Body = $"To help protect your Google Account, Google wants to make sure it's really you trying to sign in.\n\nUse this verification code to complete sign-in:\n{generatedOtp}\n\nThis code is valid for 5 minutes.\n\nIf you didn't make this request, someone else might be trying to access your account."; 
-                    
-                    using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { 
-                        smtp.EnableSsl = true; 
-                        smtp.UseDefaultCredentials = false; 
-                        smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
-                        await smtp.SendMailAsync(mail); 
-                    } 
+                string query = "SELECT F_USERNAME, F_IS_APPROVED FROM T_USERS WHERE F_USER_ID = @Id AND F_EMAIL = @Email";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@Id", userId);
+                    cmd.Parameters.AddWithValue("@Email", email.Trim());
+                    connection.Open();
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            targetUser = reader["F_USERNAME"].ToString() ?? "";
+                            isApprovedVal = Convert.ToInt32(reader["F_IS_APPROVED"]);
+                        }
+                    }
                 }
-                otpDispatched = true;
-            }
-            catch (Exception ex)
-            {
-                // Fail-silent, handled below via fallback
-                System.Diagnostics.Debug.WriteLine($"SMTP Error: {ex.Message}");
             }
 
-            if (otpDispatched)
+            if (string.IsNullOrEmpty(targetUser))
             {
-                return Json(new { success = true, isDemo = false });
+                TempData["Error"] = "❌ Selected profile is invalid.";
+                return RedirectToAction("Login");
+            }
+
+            if (isApprovedVal == 1)
+            {
+                if (!CheckAndEnforceSingleSession(userId, email, targetUser, out string sessionError))
+                {
+                    TempData["ErrorMessage"] = "⚠️ Login Blocked: " + sessionError;
+                    return RedirectToAction("Login");
+                }
+
+                string sessionId = CreateUserSessionRecord(userId, email, targetUser);
+
+                HttpContext.Session.SetString("UserSession", targetUser);
+                HttpContext.Session.SetString("UserSessionId", sessionId);
+                if (!string.IsNullOrEmpty(picture))
+                {
+                    HttpContext.Session.SetString("UserProfilePicture", picture);
+                }
+
+                string mobile = "";
+                using (var connection = _context.CreateConnection())
+                {
+                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@U", targetUser);
+                        connection.Open();
+                        var res = cmd.ExecuteScalar();
+                        if (res != null) mobile = res.ToString();
+                    }
+
+                    string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
+                    using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
+                    {
+                        cmd.Parameters.AddWithValue("@S", sessionId);
+                        cmd.Parameters.AddWithValue("@U", targetUser);
+                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(mobile))
+                {
+                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
+                }
+
+                LoadUserPermissionsToSession(targetUser);
+                HttpContext.Session.Remove("Google_Verified_Email");
+                HttpContext.Session.Remove("Google_Verified_Picture");
+
+                LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully verified profile choice and signed in. User: {targetUser}, Email: {email}");
+                return RedirectToAction("Index", "Product");
             }
             else
             {
-                // Fallback to screen demo OTP so testing does not block
-                return Json(new { success = true, isDemo = true, demoOtp = generatedOtp });
+                LogActivity(targetUser, "GOOGLE_REGISTER_PENDING", $"Submitted Google sign-in request for profile choice. User: {targetUser}, Email: {email} is pending admin approval.");
+                TempData["Success"] = "⏳ Access Pending: Selected account is pending administrator approval.";
+                return RedirectToAction("Login");
             }
         }
 
@@ -233,273 +642,6 @@ namespace ProductHub_MVC.Controllers
                         }
                     }
                 }
-            }
-        }
-
-        [HttpPost]
-        public IActionResult GoogleConfirmProfile([FromBody] GoogleConfirmProfileRequest request)
-        {
-            if (request == null || string.IsNullOrWhiteSpace(request.Username))
-            {
-                return Json(new { success = false, message = "Invalid request." });
-            }
-
-            string verifiedEmail = HttpContext.Session.GetString("Google_Verified_Email");
-            if (string.IsNullOrEmpty(verifiedEmail))
-            {
-                return Json(new { success = false, message = "Session expired or invalid. Please re-authenticate." });
-            }
-
-            int isApprovedVal = 0;
-            bool isValid = false;
-
-            using (var connection = _context.CreateConnection())
-            {
-                string query = "SELECT F_IS_APPROVED FROM T_USERS WHERE F_USERNAME = @U AND F_EMAIL = @E";
-                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
-                {
-                    cmd.Parameters.AddWithValue("@U", request.Username.Trim());
-                    cmd.Parameters.AddWithValue("@E", verifiedEmail.Trim());
-                    connection.Open();
-                    var res = cmd.ExecuteScalar();
-                    if (res != null)
-                    {
-                        isValid = true;
-                        isApprovedVal = Convert.ToInt32(res);
-                    }
-                }
-            }
-
-            if (!isValid)
-            {
-                return Json(new { success = false, message = "Selected username does not match the verified email." });
-            }
-
-            if (isApprovedVal == 1)
-            {
-                string sessionId = Guid.NewGuid().ToString("N");
-                HttpContext.Session.SetString("UserSession", request.Username.Trim());
-                HttpContext.Session.SetString("UserSessionId", sessionId);
-
-                string mobile = "";
-                using (var connection = _context.CreateConnection())
-                {
-                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
-                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
-                    {
-                        cmd.Parameters.AddWithValue("@U", request.Username.Trim());
-                        connection.Open();
-                        var res = cmd.ExecuteScalar();
-                        if (res != null) mobile = res.ToString();
-                    }
-
-                    string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
-                    using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
-                    {
-                        cmd.Parameters.AddWithValue("@S", sessionId);
-                        cmd.Parameters.AddWithValue("@U", request.Username.Trim());
-                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(mobile))
-                {
-                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
-                }
-
-                LoadUserPermissionsToSession(request.Username.Trim());
-                HttpContext.Session.Remove("Google_Verified_Email"); // Clean up choice
-
-                LogActivity(request.Username.Trim(), "GOOGLE_LOGIN", $"Successfully verified profile choice and signed in. User: {request.Username.Trim()}, Email: {verifiedEmail}");
-                return Json(new { success = true, isApproved = true });
-            }
-            else
-            {
-                LogActivity(request.Username.Trim(), "GOOGLE_REGISTER_PENDING", $"Submitted Google sign-in request for profile choice. User: {request.Username.Trim()}, Email: {verifiedEmail} is pending admin approval.");
-                return Json(new { success = true, isApproved = false });
-            }
-        }
-
-        [HttpPost]
-        public IActionResult GoogleVerifyOtp([FromBody] GoogleVerifyRequest request)
-        {
-            if (request == null || string.IsNullOrWhiteSpace(request.Code))
-            {
-                return Json(new { success = false, message = "Verification code is required." });
-            }
-
-            string pendingEmail = HttpContext.Session.GetString("Google_Pending_Email") ?? "";
-            string pendingName = HttpContext.Session.GetString("Google_Pending_Name") ?? "";
-            string expectedOtp = HttpContext.Session.GetString("Google_Pending_Otp") ?? "";
-            string expiryStr = HttpContext.Session.GetString("Google_Pending_OtpExpiry") ?? "";
-
-            if (string.IsNullOrEmpty(pendingEmail) || string.IsNullOrEmpty(expectedOtp))
-            {
-                return Json(new { success = false, message = "Session expired or invalid state. Please try logging in again." });
-            }
-
-            if (request.Code.Trim() != expectedOtp)
-            {
-                return Json(new { success = false, message = "Incorrect verification code. Please try again." });
-            }
-
-            if (!string.IsNullOrEmpty(expiryStr) && DateTime.TryParse(expiryStr, out DateTime expiryTime) && DateTime.Now > expiryTime)
-            {
-                return Json(new { success = false, message = "The verification code has expired. Please request a new one." });
-            }
-
-            // Search for all profiles matching the email
-            List<Dictionary<string, object>> profiles = new List<Dictionary<string, object>>();
-            using (var connection = _context.CreateConnection())
-            {
-                string query = "SELECT F_USERNAME, F_IS_APPROVED FROM T_USERS WHERE F_EMAIL = @Email";
-                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
-                {
-                    cmd.Parameters.AddWithValue("@Email", pendingEmail.Trim());
-                    connection.Open();
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            profiles.Add(new Dictionary<string, object>
-                            {
-                                { "username", reader["F_USERNAME"].ToString() ?? "" },
-                                { "isApproved", Convert.ToInt32(reader["F_IS_APPROVED"]) }
-                            });
-                        }
-                    }
-                }
-            }
-
-            // Invalidate the session-bound login token and verification codes
-            HttpContext.Session.Remove("GoogleLoginToken");
-            HttpContext.Session.Remove("Google_Pending_Email");
-            HttpContext.Session.Remove("Google_Pending_Name");
-            HttpContext.Session.Remove("Google_Pending_Otp");
-            HttpContext.Session.Remove("Google_Pending_OtpExpiry");
-
-            if (profiles.Count > 1)
-            {
-                // Multi-User Profile Selector Flow
-                HttpContext.Session.SetString("Google_Verified_Email", pendingEmail);
-                
-                // Return multiProfile response
-                return Json(new { success = true, multiProfile = true, profiles = profiles });
-            }
-
-            string targetUser = "";
-            int isApprovedVal = 0;
-            bool userExists = (profiles.Count == 1);
-
-            if (userExists)
-            {
-                targetUser = profiles[0]["username"].ToString() ?? "";
-                isApprovedVal = Convert.ToInt32(profiles[0]["isApproved"]);
-            }
-            else
-            {
-                // Auto registration logic:
-                string baseUsername = pendingEmail.Split('@')[0];
-                string uniqueUsername = baseUsername;
-                
-                int suffix = 1;
-                bool isUnique = false;
-                using (var connection = _context.CreateConnection())
-                {
-                    connection.Open();
-                    while (!isUnique)
-                    {
-                        string checkUserQuery = "SELECT COUNT(1) FROM T_USERS WHERE F_USERNAME = @User";
-                        using (var checkCmd = new SqlCommand(checkUserQuery, (SqlConnection)connection))
-                        {
-                            checkCmd.Parameters.AddWithValue("@User", uniqueUsername);
-                            int count = (int)checkCmd.ExecuteScalar();
-                            if (count == 0)
-                            {
-                                isUnique = true;
-                            }
-                            else
-                            {
-                                uniqueUsername = baseUsername + suffix;
-                                suffix++;
-                            }
-                        }
-                    }
-                }
-
-                string generatedPassword = Guid.NewGuid().ToString("N");
-
-                // Save to T_USERS with default reader permissions and F_IS_APPROVED = 0 (Pending)
-                using (var conn = _context.CreateConnection())
-                {
-                    string query = @"INSERT INTO T_USERS (
-                                        F_USERNAME, F_PASSWORD, F_MOBILE_NUMBER, F_EMAIL, F_IS_ADMIN, 
-                                        F_CAN_ADD_ROW, F_CAN_DOWNLOAD, F_CAN_IMPORT, F_CAN_EXPORT, F_CAN_COMPARE, F_CAN_EMAIL,
-                                        F_CAN_SEE_BRAND, F_CAN_SEE_QTY, F_CAN_SEE_PRICE, F_CAN_SEE_RATING, F_CAN_USE_EDIT, F_CAN_USE_DELETE,
-                                        F_RESTRICTED_BRAND, F_IS_APPROVED
-                                     ) VALUES (
-                                        @U, @P, '', @E, 0, 
-                                        0, 0, 0, 0, 0, 0,
-                                        1, 1, 1, 1, 0, 0,
-                                        'ALL', 0
-                                     )";
-                    using (var cmd = new SqlCommand(query, (SqlConnection)conn))
-                    {
-                        cmd.Parameters.AddWithValue("@U", uniqueUsername);
-                        cmd.Parameters.AddWithValue("@P", generatedPassword);
-                        cmd.Parameters.AddWithValue("@E", pendingEmail.Trim());
-                        conn.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                targetUser = uniqueUsername;
-                isApprovedVal = 0;
-            }
-
-            if (isApprovedVal == 1)
-            {
-                string sessionId = Guid.NewGuid().ToString("N");
-                HttpContext.Session.SetString("UserSession", targetUser);
-                HttpContext.Session.SetString("UserSessionId", sessionId);
-
-                string mobile = "";
-                using (var connection = _context.CreateConnection())
-                {
-                    string selectQuery = "SELECT F_MOBILE_NUMBER FROM T_USERS WHERE F_USERNAME = @U";
-                    using (var cmd = new SqlCommand(selectQuery, (SqlConnection)connection))
-                    {
-                        cmd.Parameters.AddWithValue("@U", targetUser);
-                        connection.Open();
-                        var res = cmd.ExecuteScalar();
-                        if (res != null) mobile = res.ToString();
-                    }
-
-                    string updateQuery = "UPDATE T_USERS SET F_SESSION_ID = @S WHERE F_USERNAME = @U";
-                    using (var cmd = new SqlCommand(updateQuery, (SqlConnection)connection))
-                    {
-                        cmd.Parameters.AddWithValue("@S", sessionId);
-                        cmd.Parameters.AddWithValue("@U", targetUser);
-                        if (connection.State != System.Data.ConnectionState.Open) connection.Open();
-                        cmd.ExecuteNonQuery();
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(mobile))
-                {
-                    HttpContext.Session.SetString("PromptUpdateMobile", "true");
-                }
-
-                LoadUserPermissionsToSession(targetUser);
-
-                LogActivity(targetUser, "GOOGLE_LOGIN", $"Successfully verified Google 2-Step OTP and signed in. User: {targetUser}, Email: {pendingEmail}");
-                return Json(new { success = true, isApproved = true });
-            }
-            else
-            {
-                LogActivity(targetUser, "GOOGLE_REGISTER_PENDING", $"Submitted Google sign-in request for verification. User: {targetUser}, Email: {pendingEmail} is pending admin approval.");
-                return Json(new { success = true, isApproved = false });
             }
         }
 
@@ -596,8 +738,9 @@ namespace ProductHub_MVC.Controllers
                             smtp.EnableSsl = true; 
                             smtp.UseDefaultCredentials = false; 
                             smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
-                            await smtp.SendMailAsync(mail); 
+                            smtp.Send(mail); 
                         } 
+                        SaveEmailBackup(mail.Subject, email, mail.Body);
                     }
                     otpDispatched = true;
                     TempData["Success"] = $"✉️ Registration OTP sent successfully to your email: {email}";
@@ -685,8 +828,15 @@ namespace ProductHub_MVC.Controllers
             // Log activity step into history table
             LogActivity(pendingUser, "USER_REGISTERED", "Completed public registration OTP verification. Account created in Pending Approval state.");
 
-            // Dispatch username and auto-generated password via Email/SMS
-            bool notificationDispatched = await SendCredentialsToNewUser(pendingUser, autoGeneratedPassword, pendingEmail, pendingMobile);
+            // Extract baseUrl for non-blocking background dispatch
+            string scheme = HttpContext.Request.Scheme;
+            string host = HttpContext.Request.Host.ToUriComponent();
+            string baseUrl = $"{scheme}://{host}";
+
+            // Offload credentials dispatch via Email/SMS to a background Task (avoids SMTP delay blocking redirection)
+            _ = Task.Run(async () => {
+                await SendCredentialsToNewUser(pendingUser, autoGeneratedPassword, pendingEmail, pendingMobile, baseUrl);
+            });
 
             // Clean up registration session values
             HttpContext.Session.Remove("Pending_Username");
@@ -695,14 +845,8 @@ namespace ProductHub_MVC.Controllers
             HttpContext.Session.Remove("Pending_Otp");
             HttpContext.Session.Remove("Pending_OtpExpiry");
 
-            if (notificationDispatched)
-            {
-                TempData["Success"] = "✅ Registration submitted! Your credentials have been sent, but your account is pending administrator approval before you can log in.";
-            }
-            else
-            {
-                TempData["Success"] = $"✅ Registration submitted! Account: {pendingUser}, Password: {autoGeneratedPassword} (Note this, but login will fail until approved by administrator).";
-            }
+            // Always display the credentials to the user on screen so they are NEVER locked out!
+            TempData["Success"] = $"🎉 Registration submitted successfully! Account: {pendingUser} | Password: {autoGeneratedPassword} (Note: Your account is pending administrator approval before you can log in).";
 
             return RedirectToAction(nameof(Login));
         }
@@ -715,7 +859,7 @@ namespace ProductHub_MVC.Controllers
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        private async Task<bool> SendCredentialsToNewUser(string username, string password, string email, string mobile)
+        private async Task<bool> SendCredentialsToNewUser(string username, string password, string email, string mobile, string baseUrl)
         {
             string messageText = $"Welcome to ProductHub! Your username is: {username} and your generated password is: {password}";
             bool smsSent = false;
@@ -752,10 +896,6 @@ namespace ProductHub_MVC.Controllers
             {
                 try
                 {
-                    string scheme = HttpContext.Request.Scheme;
-                    string host = HttpContext.Request.Host.ToUriComponent();
-                    string baseUrl = $"{scheme}://{host}";
-
                     string senderEmail = "tpass2829@gmail.com"; 
                     string senderPassword = "uozwlvrkykjzgjmj"; 
                     using (MailMessage mail = new MailMessage()) { 
@@ -817,8 +957,9 @@ namespace ProductHub_MVC.Controllers
                             smtp.EnableSsl = true; 
                             smtp.UseDefaultCredentials = false; 
                             smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
-                            await smtp.SendMailAsync(mail); 
+                            smtp.Send(mail); 
                         } 
+                        SaveEmailBackup(mail.Subject, email, mail.Body);
                     }
                     emailSent = true;
                 }
@@ -931,8 +1072,9 @@ namespace ProductHub_MVC.Controllers
                                     smtp.EnableSsl = true; 
                                     smtp.UseDefaultCredentials = false; 
                                     smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
-                                    await smtp.SendMailAsync(mail); 
+                                    smtp.Send(mail); 
                                 } 
+                                SaveEmailBackup(mail.Subject, userEmail, mail.Body);
                             }
                             otpDispatched = true;
                             TempData["Success"] = $"✉️ Password recovery OTP sent successfully to your registered email: {userEmail}";
@@ -1055,6 +1197,27 @@ namespace ProductHub_MVC.Controllers
         public IActionResult Logout()
         {
             string currentUser = HttpContext.Session.GetString("UserSession") ?? "UNKNOWN";
+            string sessionVarId = HttpContext.Session.GetString("UserSessionId") ?? "";
+
+            if (!string.IsNullOrEmpty(sessionVarId) && Guid.TryParse(sessionVarId, out Guid sessionGuid))
+            {
+                try
+                {
+                    using (var connection = _context.CreateConnection())
+                    {
+                        string query = "UPDATE UserSessions SET IsActive = 0, LogoutTime = @LogoutTime WHERE SessionId = @SessionId";
+                        using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                        {
+                            cmd.Parameters.AddWithValue("@LogoutTime", DateTime.Now);
+                            cmd.Parameters.AddWithValue("@SessionId", sessionGuid);
+                            connection.Open();
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+                catch { /* Fail-silent */ }
+            }
+
             LogActivity(currentUser, "LOGOUT", "Explicitly terminated active dashboard authorization session tracking variables.");
             HttpContext.Session.Clear();
             return RedirectToAction(nameof(Login));
