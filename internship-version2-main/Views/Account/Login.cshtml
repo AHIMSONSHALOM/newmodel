@@ -169,6 +169,13 @@
             </div>
         }
 
+        @if (TempData["ErrorMessage"] != null)
+        {
+            <div class="alert alert-danger border-0 p-3 small mb-3 text-center fw-semibold text-danger" style="border-radius: 10px; background-color: #FEF2F2;">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> @TempData["ErrorMessage"]
+            </div>
+        }
+
         <form asp-action="Login" method="post" class="d-flex flex-column gap-3">
             <div>
                 <label class="form-label fw-semibold text-secondary small">Username</label>

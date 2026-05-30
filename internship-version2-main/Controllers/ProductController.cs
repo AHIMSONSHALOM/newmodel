@@ -42,12 +42,40 @@ namespace ProductHub_MVC.Controllers
             } catch { /* Fail-silent to guard thread execution speed */ }
         }
 
+        private bool IsSessionValid()
+        {
+            string loggedUser = HttpContext.Session.GetString("UserSession");
+            if (loggedUser == null) return false;
+
+            string sessionVarId = HttpContext.Session.GetString("UserSessionId");
+            string dbSessionId = "";
+            using (var connection = _context.CreateConnection())
+            {
+                string query = "SELECT F_SESSION_ID FROM T_USERS WHERE F_USERNAME = @U";
+                using (var cmd = new SqlCommand(query, (SqlConnection)connection))
+                {
+                    cmd.Parameters.AddWithValue("@U", loggedUser);
+                    connection.Open();
+                    var res = cmd.ExecuteScalar();
+                    if (res != null) dbSessionId = res.ToString();
+                }
+            }
+
+            return dbSessionId == sessionVarId;
+        }
+
         // =========================================================
         // 1. DATA GRID: FILTER, SEARCH & COLUMN SWITCHES ENGINE
         // =========================================================
         public IActionResult Index(string sortBy, string brandFilter, double? minPrice, double? maxPrice, double? minRating)
         {
             if (HttpContext.Session.GetString("UserSession") == null) return RedirectToAction("Login", "Account");
+            if (!IsSessionValid())
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = "⚠️ Session Terminated: Your account has been logged in on another machine.";
+                return RedirectToAction("Login", "Account");
+            }
 
             ViewBag.LoggedUser = HttpContext.Session.GetString("UserSession");
             ViewBag.IsAdmin = HttpContext.Session.GetInt32("IsAdmin") ?? 0;
@@ -101,6 +129,12 @@ namespace ProductHub_MVC.Controllers
         public IActionResult Compare(List<int> ids)
         {
             if (HttpContext.Session.GetString("UserSession") == null) return RedirectToAction("Login", "Account");
+            if (!IsSessionValid())
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = "⚠️ Session Terminated: Your account has been logged in on another machine.";
+                return RedirectToAction("Login", "Account");
+            }
 
             if (HttpContext.Session.GetInt32("CanCompare") != 1)
             {
@@ -158,6 +192,13 @@ namespace ProductHub_MVC.Controllers
         // =========================================================================
         public IActionResult Users()
         {
+            if (HttpContext.Session.GetString("UserSession") == null) return RedirectToAction("Login", "Account");
+            if (!IsSessionValid())
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = "⚠️ Session Terminated: Your account has been logged in on another machine.";
+                return RedirectToAction("Login", "Account");
+            }
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return RedirectToAction(nameof(Index));
 
             // Build dropdown source for "Show Brand": ALL + each brand with record count.
@@ -263,16 +304,86 @@ namespace ProductHub_MVC.Controllers
         public IActionResult ApproveUser(int userId, string targetName)
         {
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
+            
+            string userEmail = "";
             using (var connection = _context.CreateConnection())
             {
+                connection.Open();
+                
+                // 1. Retrieve the registered email address of the user
+                string emailQuery = "SELECT F_EMAIL FROM T_USERS WHERE F_USER_ID = @Id";
+                using (var emailCmd = new SqlCommand(emailQuery, (SqlConnection)connection))
+                {
+                    emailCmd.Parameters.AddWithValue("@Id", userId);
+                    var res = emailCmd.ExecuteScalar();
+                    if (res != null) userEmail = res.ToString();
+                }
+
+                // 2. Approve the user account
                 string query = "UPDATE T_USERS SET F_IS_APPROVED = 1 WHERE F_USER_ID = @Id";
                 using (var cmd = new SqlCommand(query, (SqlConnection)connection))
                 {
                     cmd.Parameters.AddWithValue("@Id", userId);
-                    connection.Open();
                     cmd.ExecuteNonQuery();
                 }
             }
+
+            // 3. Dispatch security notification email asynchronously/synchronously
+            if (!string.IsNullOrWhiteSpace(userEmail))
+            {
+                try
+                {
+                    string senderEmail = "tpass2829@gmail.com"; 
+                    string senderPassword = "uozwlvrkykjzgjmj"; 
+                    using (MailMessage mail = new MailMessage()) { 
+                        mail.From = new MailAddress(senderEmail, "ProductHub Admin"); 
+                        mail.To.Add(userEmail.Trim()); 
+                        mail.Subject = "🎉 Account Approved - ProductHub Access Granted"; 
+                        mail.IsBodyHtml = true;
+                        mail.Body = $@"
+                            <div style='font-family: &quot;Segoe UI&quot;, Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.02);'>
+                                <div style='text-align: center; margin-bottom: 24px;'>
+                                    <div style='background-color: #E8F5E9; color: #16A34A; display: inline-block; padding: 12px; border-radius: 50%; margin-bottom: 12px;'>
+                                        <svg width='32' height='32' fill='currentColor' viewBox='0 0 24 24' style='display: block;'>
+                                            <path d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/>
+                                        </svg>
+                                    </div>
+                                    <h2 style='color: #1E293B; margin: 0 0 8px 0; font-weight: 700; font-size: 22px;'>Access Granted!</h2>
+                                    <p style='color: #64748B; font-size: 14px; margin: 0;'>Your ProductHub account has been officially approved.</p>
+                                </div>
+                                <div style='margin-bottom: 24px; line-height: 1.6; color: #334155; font-size: 15px;'>
+                                    <p>Hello <strong>{targetName}</strong>,</p>
+                                    <p>Great news! The system administrator has reviewed and <strong>approved</strong> your registration request. You can now log into ProductHub using your registered Google account or credentials.</p>
+                                    
+                                    <div style='background-color: #F8FAFC; padding: 20px; border-left: 4px solid #16A34A; margin: 24px 0; border-radius: 0 8px 8px 0;'>
+                                        <p style='margin: 0; font-weight: 700; color: #0F172A; font-size: 14px;'>⚠️ Action Required:</p>
+                                        <p style='margin: 6px 0 0 0; color: #475569; font-size: 13.5px;'>Please sign in and ensure that your profile information is up to date, including your <strong>mobile number</strong>, to secure your account and configure 2-Step OTP options.</p>
+                                    </div>
+                                </div>
+                                <div style='text-align: center; margin-top: 30px;'>
+                                    <a href='http://localhost:5242' style='background-color: #16A34A; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(22,163,74,0.15); transition: background-color 0.15s ease;'>Log into ProductHub</a>
+                                </div>
+                                <hr style='border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;' />
+                                <div style='text-align: center; font-size: 12px; color: #94A3B8;'>
+                                    This is a secure security notification from ProductHub.<br/>
+                                    If you did not request this account activation, please contact system support.
+                                </div>
+                            </div>"; 
+                        
+                        using (SmtpClient smtp = new SmtpClient("smtp.gmail.com", 587)) { 
+                            smtp.EnableSsl = true; 
+                            smtp.UseDefaultCredentials = false; 
+                            smtp.Credentials = new NetworkCredential(senderEmail, senderPassword); 
+                            smtp.Send(mail); 
+                        } 
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"SMTP Dispatch Error: {ex.Message}");
+                }
+            }
+
             LogActivity("USER_APPROVAL", $"Approved pending registration access request and activated dashboard permissions for user: '{targetName}'.");
             TempData["SuccessMessage"] = $"✅ User '{targetName}' has been successfully approved and granted application access!";
             return RedirectToAction(nameof(Users));
@@ -304,6 +415,12 @@ namespace ProductHub_MVC.Controllers
         public IActionResult History(string targetUser)
         {
             if (HttpContext.Session.GetString("UserSession") == null) return RedirectToAction("Login", "Account");
+            if (!IsSessionValid())
+            {
+                HttpContext.Session.Clear();
+                TempData["ErrorMessage"] = "⚠️ Session Terminated: Your account has been logged in on another machine.";
+                return RedirectToAction("Login", "Account");
+            }
             if (HttpContext.Session.GetInt32("IsAdmin") != 1) return Forbid();
 
             ViewBag.LoggedUser = HttpContext.Session.GetString("UserSession");

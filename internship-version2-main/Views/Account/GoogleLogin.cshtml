@@ -553,6 +553,13 @@
                     </div>
                 </div>
 
+                <!-- PANEL 5: SELECT PROFILE (MULTI-USER CHOOSER) -->
+                <div id="panel-profile" class="panel panel-hidden">
+                    <div class="account-list" id="profile-list-container">
+                        <!-- Rendered dynamically via JS -->
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -593,6 +600,7 @@
             document.getElementById('panel-chooser').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.add('panel-hidden');
             document.getElementById('panel-pending').classList.add('panel-hidden');
+            document.getElementById('panel-profile').classList.add('panel-hidden');
             document.getElementById('panel-custom').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             document.getElementById('demo-notice').style.display = 'none';
@@ -604,6 +612,7 @@
             document.getElementById('panel-custom').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.add('panel-hidden');
             document.getElementById('panel-pending').classList.add('panel-hidden');
+            document.getElementById('panel-profile').classList.add('panel-hidden');
             document.getElementById('panel-chooser').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             document.getElementById('demo-notice').style.display = 'none';
@@ -615,6 +624,7 @@
             document.getElementById('panel-chooser').classList.add('panel-hidden');
             document.getElementById('panel-custom').classList.add('panel-hidden');
             document.getElementById('panel-pending').classList.add('panel-hidden');
+            document.getElementById('panel-profile').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             
@@ -625,11 +635,24 @@
             document.getElementById('panel-chooser').classList.add('panel-hidden');
             document.getElementById('panel-custom').classList.add('panel-hidden');
             document.getElementById('panel-verification').classList.add('panel-hidden');
+            document.getElementById('panel-profile').classList.add('panel-hidden');
             document.getElementById('panel-pending').classList.remove('panel-hidden');
             document.getElementById('error-alert').style.display = 'none';
             document.getElementById('demo-notice').style.display = 'none';
             
             updateLeftPanel("Request submitted", "Your sign-in request was sent to the ProductHub administrator.", true);
+        }
+
+        function showProfilePanel() {
+            document.getElementById('panel-chooser').classList.add('panel-hidden');
+            document.getElementById('panel-custom').classList.add('panel-hidden');
+            document.getElementById('panel-verification').classList.add('panel-hidden');
+            document.getElementById('panel-pending').classList.add('panel-hidden');
+            document.getElementById('panel-profile').classList.remove('panel-hidden');
+            document.getElementById('error-alert').style.display = 'none';
+            document.getElementById('demo-notice').style.display = 'none';
+            
+            updateLeftPanel("Choose a profile", "to continue to ProductHub", true);
         }
 
         function showError(msg) {
@@ -741,7 +764,11 @@
                 verifyText.innerHTML = 'Verify';
                 
                 if (data.success) {
-                    if (data.isApproved) {
+                    if (data.multiProfile) {
+                        // Render profiles chooser panel!
+                        renderProfilesList(data.profiles);
+                        showProfilePanel();
+                    } else if (data.isApproved) {
                         // User is already approved - redirect to dashboard!
                         if (window.opener) {
                             window.opener.postMessage('google-signin-success', '*');
@@ -759,6 +786,91 @@
                 verifyBtn.disabled = false;
                 verifyText.innerHTML = 'Verify';
                 showError('Network error occurred during OTP verification.');
+                console.error(err);
+            });
+        }
+
+        function renderProfilesList(profiles) {
+            const container = document.getElementById('profile-list-container');
+            container.innerHTML = '';
+            
+            profiles.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'account-item';
+                item.onclick = () => selectProfile(p.username);
+                
+                const initials = p.username.charAt(0).toUpperCase();
+                const badgeHtml = p.isApproved === 0 
+                    ? '<span style="color: #d97706; font-size: 11px; font-weight: 700; margin-left: 8px; border: 1px solid #fcd34d; padding: 2px 6px; border-radius: 4px; background: #fffde7;">PENDING</span>' 
+                    : '<span style="color: #16a34a; font-size: 11px; font-weight: 700; margin-left: 8px; border: 1px solid #bbf7d0; padding: 2px 6px; border-radius: 4px; background: #f0fdf4;">ACTIVE</span>';
+                
+                item.innerHTML = `
+                    <div class="avatar">${initials}</div>
+                    <div class="account-details">
+                        <p class="account-name" style="display: flex; align-items: center; margin: 0 0 2px 0;">
+                            👤 ${p.username}
+                            ${badgeHtml}
+                        </p>
+                        <p class="account-email">${activeEmail}</p>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+            
+            // Add custom back selector
+            const backItem = document.createElement('div');
+            backItem.className = 'account-item';
+            backItem.onclick = () => showChooserPanel();
+            backItem.innerHTML = `
+                <div class="avatar-another">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                    </svg>
+                </div>
+                <div class="account-details">
+                    <p class="account-name" style="color: var(--google-blue);">Use another account</p>
+                </div>
+            `;
+            container.appendChild(backItem);
+        }
+
+        function selectProfile(username) {
+            document.body.style.cursor = 'wait';
+            document.getElementById('error-alert').style.display = 'none';
+            
+            fetch('/Account/GoogleConfirmProfile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server returned authentication profile error.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.body.style.cursor = 'default';
+                if (data.success) {
+                    if (data.isApproved) {
+                        if (window.opener) {
+                            window.opener.postMessage('google-signin-success', '*');
+                        }
+                        window.close();
+                    } else {
+                        showPendingPanel();
+                    }
+                } else {
+                    showError(data.message || 'Profile verification failed.');
+                }
+            })
+            .catch(err => {
+                document.body.style.cursor = 'default';
+                showError('Network error occurred during profile selection.');
                 console.error(err);
             });
         }
